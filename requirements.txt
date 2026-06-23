@@ -1,0 +1,6 @@
+pandas>=2.2
+numpy>=2.0
+matplotlib>=3.9
+scipy>=1.13
+seaborn>=0.13
+streamlit>=1.36
