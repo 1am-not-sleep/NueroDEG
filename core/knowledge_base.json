@@ -1,0 +1,741 @@
+{
+  "version": "1.0",
+  "description": "神经细胞标记基因知识库 - Neural Cell Marker Gene Knowledge Base",
+  "cell_types": [
+    {
+      "type": "兴奋性神经元",
+      "type_en": "Excitatory Neuron",
+      "description": "使用谷氨酸作为主要神经递质的神经元，负责兴奋性信号传递",
+      "markers": [
+        {
+          "gene": "SLC17A7",
+          "alias": "VGLUT1",
+          "function": "谷氨酸转运，囊泡填充",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "CAMK2A",
+          "alias": "CaMKII-alpha",
+          "function": "突触可塑性调节，长时程增强",
+          "category": "信号转导"
+        },
+        {
+          "gene": "SATB2",
+          "alias": "",
+          "function": "皮层神经元身份维持与分化",
+          "category": "转录因子"
+        },
+        {
+          "gene": "NRGN",
+          "alias": "Neurogranin",
+          "function": "钙信号调节，突触传递",
+          "category": "信号转导"
+        },
+        {
+          "gene": "SYT1",
+          "alias": "Synaptotagmin-1",
+          "function": "钙依赖性神经递质释放",
+          "category": "突触蛋白"
+        },
+        {
+          "gene": "GRIN1",
+          "alias": "NMDAR1",
+          "function": "NMDA受体亚基，谷氨酸信号",
+          "category": "受体"
+        },
+        {
+          "gene": "GRIA1",
+          "alias": "GluA1",
+          "function": "AMPA受体亚基，快速兴奋性传递",
+          "category": "受体"
+        },
+        {
+          "gene": "GRIK1",
+          "alias": "GluK1",
+          "function": "海人藻酸受体亚基",
+          "category": "受体"
+        },
+        {
+          "gene": "SLC17A6",
+          "alias": "VGLUT2",
+          "function": "谷氨酸转运，囊泡填充",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "TBR1",
+          "alias": "",
+          "function": "皮层神经元发育与层状定位",
+          "category": "转录因子"
+        },
+        {
+          "gene": "CUX2",
+          "alias": "",
+          "function": "上层皮层神经元标记",
+          "category": "转录因子"
+        },
+        {
+          "gene": "RORB",
+          "alias": "",
+          "function": "中层皮层神经元标记",
+          "category": "转录因子"
+        },
+        {
+          "gene": "GAD1-GAD2_high",
+          "alias": "",
+          "function": "当GAD1/GAD2也高表达时提示共释放",
+          "category": "对照标记"
+        }
+      ],
+      "key_functions": [
+        "兴奋性突触传递",
+        "突触可塑性",
+        "神经元激活",
+        "长时程增强(LTP)"
+      ],
+      "disease_links": [
+        "癫痫",
+        "脑缺血",
+        "阿尔茨海默病",
+        "精神分裂症"
+      ],
+      "interpretation": {
+        "up": "兴奋性神经元活性增强 / 突触传递上调 / 可能的兴奋毒性",
+        "down": "兴奋性神经元功能受损 / 突触丢失 / 神经元抑制或退化"
+      }
+    },
+    {
+      "type": "抑制性神经元",
+      "type_en": "Inhibitory Neuron",
+      "description": "使用GABA作为主要递质的神经元，调控神经网络兴奋性",
+      "markers": [
+        {
+          "gene": "GAD1",
+          "alias": "GAD67",
+          "function": "GABA合成酶，GABA生成",
+          "category": "合成酶"
+        },
+        {
+          "gene": "GAD2",
+          "alias": "GAD65",
+          "function": "GABA合成酶，GABA生成",
+          "category": "合成酶"
+        },
+        {
+          "gene": "PVALB",
+          "alias": "Parvalbumin",
+          "function": "钙结合蛋白，快速放电中间神经元标记",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "SST",
+          "alias": "Somatostatin",
+          "function": "生长抑素，特定中间神经元亚型",
+          "category": "神经肽"
+        },
+        {
+          "gene": "CALB1",
+          "alias": "Calbindin",
+          "function": "钙结合蛋白",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "CALB2",
+          "alias": "Calretinin",
+          "function": "钙结合蛋白",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "VIP",
+          "alias": "VIP",
+          "function": "血管活性肠肽，特定中间神经元亚型",
+          "category": "神经肽"
+        },
+        {
+          "gene": "NPY",
+          "alias": "Neuropeptide Y",
+          "function": "神经肽Y，调节神经元兴奋性",
+          "category": "神经肽"
+        },
+        {
+          "gene": "GABRA1",
+          "alias": "",
+          "function": "GABA-A受体alpha1亚基",
+          "category": "受体"
+        },
+        {
+          "gene": "GABRG2",
+          "alias": "",
+          "function": "GABA-A受体gamma2亚基",
+          "category": "受体"
+        },
+        {
+          "gene": "SLC32A1",
+          "alias": "VIAAT",
+          "function": "囊泡GABA/甘氨酸转运",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "CCK",
+          "alias": "Cholecystokinin",
+          "function": "胆囊收缩素，中间神经元亚型标记",
+          "category": "神经肽"
+        }
+      ],
+      "key_functions": [
+        "GABA能抑制性传递",
+        "神经网络节律调控",
+        "兴奋/抑制平衡(E/I balance)",
+        "伽马振荡调控"
+      ],
+      "disease_links": [
+        "癫痫",
+        "焦虑症",
+        "自闭症",
+        "精神分裂症",
+        "帕金森病"
+      ],
+      "interpretation": {
+        "up": "抑制性递质合成/释放增加，可能代偿性响应兴奋性增高",
+        "down": "抑制性功能减弱，可能导致E/I失衡和过度兴奋"
+      }
+    },
+    {
+      "type": "星形胶质细胞",
+      "type_en": "Astrocyte",
+      "description": "中枢神经系统中数量最多的胶质细胞，支持神经元功能、维持稳态",
+      "markers": [
+        {
+          "gene": "GFAP",
+          "alias": "Glial Fibrillary Acidic Protein",
+          "function": "中间丝蛋白，星形胶质细胞骨架标记",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "S100B",
+          "alias": "",
+          "function": "钙结合蛋白，星形胶质细胞标记",
+          "category": "信号转导"
+        },
+        {
+          "gene": "AQP4",
+          "alias": "Aquaporin-4",
+          "function": "水通道蛋白，脑水平衡",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "ALDH1L1",
+          "alias": "",
+          "function": "叶酸代谢相关，星形胶质细胞标记",
+          "category": "代谢酶"
+        },
+        {
+          "gene": "SLC1A2",
+          "alias": "EAAT2/GLT-1",
+          "function": "谷氨酸转运体，清除突触间隙谷氨酸",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "SLC1A3",
+          "alias": "EAAT1/GLAST",
+          "function": "谷氨酸转运体",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "GLUL",
+          "alias": "Glutamine Synthetase",
+          "function": "谷氨酰胺合成酶，谷氨酸-谷氨酰胺循环",
+          "category": "代谢酶"
+        },
+        {
+          "gene": "GJA1",
+          "alias": "Connexin-43",
+          "function": "缝隙连接蛋白，细胞间通讯",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "SOX9",
+          "alias": "",
+          "function": "星形胶质细胞发育调控",
+          "category": "转录因子"
+        },
+        {
+          "gene": "EAAT2",
+          "alias": "SLC1A2",
+          "function": "谷氨酸清除，防止兴奋毒性",
+          "category": "转运蛋白"
+        }
+      ],
+      "key_functions": [
+        "谷氨酸清除",
+        "钾离子缓冲",
+        "血脑屏障维持",
+        "神经营养因子分泌",
+        "突触修剪"
+      ],
+      "disease_links": [
+        "脑损伤/创伤",
+        "阿尔茨海默病",
+        "多发性硬化",
+        "脑肿瘤(星形细胞瘤)",
+        "脑水肿"
+      ],
+      "interpretation": {
+        "up": "星形胶质细胞活化/反应性胶质增生，提示神经炎症或损伤反应",
+        "down": "星形胶质细胞功能减弱，谷氨酸清除能力下降，稳态维持受损"
+      }
+    },
+    {
+      "type": "小胶质细胞",
+      "type_en": "Microglia",
+      "description": "中枢神经系统的固有免疫细胞，介导神经炎症反应和突触修剪",
+      "markers": [
+        {
+          "gene": "AIF1",
+          "alias": "Iba-1",
+          "function": "离子钙接头蛋白，小胶质细胞标记",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "CD68",
+          "alias": "Macrosialin",
+          "function": "溶酶体/吞噬相关蛋白，活化小胶质细胞标记",
+          "category": "免疫蛋白"
+        },
+        {
+          "gene": "TMEM119",
+          "alias": "",
+          "function": "跨膜蛋白，稳态小胶质细胞标记",
+          "category": "膜蛋白"
+        },
+        {
+          "gene": "CX3CR1",
+          "alias": "Fractalkine Receptor",
+          "function": "趋化因子受体，小胶质细胞迁移与突触修剪",
+          "category": "受体"
+        },
+        {
+          "gene": "CSF1R",
+          "alias": "M-CSF Receptor",
+          "function": "集落刺激因子受体，小胶质细胞存活",
+          "category": "受体"
+        },
+        {
+          "gene": "TREM2",
+          "alias": "",
+          "function": "髓样细胞表达触发受体，小胶质细胞功能调控",
+          "category": "受体"
+        },
+        {
+          "gene": "CD11b",
+          "alias": "ITGAM",
+          "function": "整合素，小胶质细胞粘附与迁移",
+          "category": "免疫蛋白"
+        },
+        {
+          "gene": "P2RY12",
+          "alias": "",
+          "function": "嘌呤能受体，稳态小胶质细胞标记",
+          "category": "受体"
+        },
+        {
+          "gene": "TLR4",
+          "alias": "",
+          "function": "Toll样受体4，炎症信号感应",
+          "category": "受体"
+        },
+        {
+          "gene": "IL1B",
+          "alias": "IL-1beta",
+          "function": "促炎细胞因子，炎症反应",
+          "category": "细胞因子"
+        },
+        {
+          "gene": "TNF",
+          "alias": "TNF-alpha",
+          "function": "肿瘤坏死因子，促炎信号",
+          "category": "细胞因子"
+        }
+      ],
+      "key_functions": [
+        "免疫监视",
+        "突触修剪",
+        "神经炎症响应",
+        "吞噬凋亡细胞",
+        "细胞因子分泌"
+      ],
+      "disease_links": [
+        "神经炎症",
+        "阿尔茨海默病",
+        "帕金森病",
+        "多发性硬化",
+        "脑外伤"
+      ],
+      "interpretation": {
+        "up": "小胶质细胞活化/增殖，提示神经炎症反应或免疫激活",
+        "down": "小胶质细胞功能抑制，免疫监视减弱，可能影响神经稳态"
+      }
+    },
+    {
+      "type": "少突胶质细胞",
+      "type_en": "Oligodendrocyte",
+      "description": "负责中枢神经系统轴突髓鞘形成和支持的胶质细胞",
+      "markers": [
+        {
+          "gene": "MBP",
+          "alias": "Myelin Basic Protein",
+          "function": "髓鞘碱性蛋白，髓鞘结构成分",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "OLIG2",
+          "alias": "",
+          "function": "少突胶质细胞分化转录因子",
+          "category": "转录因子"
+        },
+        {
+          "gene": "MOG",
+          "alias": "Myelin Oligodendrocyte Glycoprotein",
+          "function": "髓鞘少突胶质细胞糖蛋白",
+          "category": "膜蛋白"
+        },
+        {
+          "gene": "PLP1",
+          "alias": "Proteolipid Protein 1",
+          "function": "蛋白脂质蛋白，主要髓鞘蛋白",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "CNP",
+          "alias": "CNPase",
+          "function": "2',3'-环核苷酸3'-磷酸二酯酶",
+          "category": "代谢酶"
+        },
+        {
+          "gene": "SOX10",
+          "alias": "",
+          "function": "少突胶质细胞发育与分化",
+          "category": "转录因子"
+        },
+        {
+          "gene": "NKX2-2",
+          "alias": "",
+          "function": "少突胶质细胞谱系决定",
+          "category": "转录因子"
+        },
+        {
+          "gene": "MAG",
+          "alias": "Myelin Associated Glycoprotein",
+          "function": "髓鞘相关糖蛋白，轴突-髓鞘相互作用",
+          "category": "膜蛋白"
+        },
+        {
+          "gene": "MOBP",
+          "alias": "",
+          "function": "髓鞘相关少突胶质细胞碱性蛋白",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "GALC",
+          "alias": "Galactosylceramidase",
+          "function": "半乳糖脑苷脂酶，髓鞘代谢",
+          "category": "代谢酶"
+        }
+      ],
+      "key_functions": [
+        "髓鞘形成",
+        "轴突营养支持",
+        "跳跃式传导",
+        "神经电信号传导加速"
+      ],
+      "disease_links": [
+        "多发性硬化",
+        "脑白质病",
+        "脊髓损伤",
+        "精神分裂症"
+      ],
+      "interpretation": {
+        "up": "髓鞘生成或修复活动增强，可能为损伤后髓鞘再生",
+        "down": "髓鞘形成受损，少突胶质细胞功能障碍或丢失，导致传导减慢"
+      }
+    },
+    {
+      "type": "神经干细胞/前体细胞",
+      "type_en": "Neural Stem/Progenitor Cell",
+      "description": "具有自我更新和分化潜能的神经前体细胞，参与神经发生和修复",
+      "markers": [
+        {
+          "gene": "SOX2",
+          "alias": "",
+          "function": "多能性维持，神经干细胞标记",
+          "category": "转录因子"
+        },
+        {
+          "gene": "NES",
+          "alias": "Nestin",
+          "function": "中间丝蛋白，神经干细胞标记",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "PAX6",
+          "alias": "",
+          "function": "眼/端脑发育，神经干细胞标记",
+          "category": "转录因子"
+        },
+        {
+          "gene": "MKI67",
+          "alias": "Ki-67",
+          "function": "细胞增殖标记",
+          "category": "细胞周期"
+        },
+        {
+          "gene": "DCX",
+          "alias": "Doublecortin",
+          "function": "微管相关蛋白，迁移中神经元/前体细胞",
+          "category": "结构蛋白"
+        },
+        {
+          "gene": "ASCL1",
+          "alias": "Mash1",
+          "function": "神经发生转录因子",
+          "category": "转录因子"
+        },
+        {
+          "gene": "PROM1",
+          "alias": "CD133",
+          "function": "干细胞表面标记",
+          "category": "膜蛋白"
+        },
+        {
+          "gene": "NOTCH1",
+          "alias": "",
+          "function": "Notch信号受体，前体细胞维持",
+          "category": "受体"
+        }
+      ],
+      "key_functions": [
+        "神经发生",
+        "自我更新",
+        "多向分化",
+        "损伤后修复"
+      ],
+      "disease_links": [
+        "脑肿瘤",
+        "脑损伤",
+        "神经退行性疾病"
+      ],
+      "interpretation": {
+        "up": "神经发生或再生活动增强，可能为修复/代偿响应",
+        "down": "神经发生活动减弱，再生能力下降"
+      }
+    },
+    {
+      "type": "多巴胺能神经元",
+      "type_en": "Dopaminergic Neuron",
+      "description": "以多巴胺为递质的神经元，主要分布于黑质致密部和腹侧被盖区",
+      "markers": [
+        {
+          "gene": "TH",
+          "alias": "Tyrosine Hydroxylase",
+          "function": "酪氨酸羟化酶，多巴胺合成限速酶",
+          "category": "合成酶"
+        },
+        {
+          "gene": "SLC6A3",
+          "alias": "DAT",
+          "function": "多巴胺转运体，多巴胺再摄取",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "DRD2",
+          "alias": "D2 Receptor",
+          "function": "多巴胺D2受体",
+          "category": "受体"
+        },
+        {
+          "gene": "DRD1",
+          "alias": "D1 Receptor",
+          "function": "多巴胺D1受体",
+          "category": "受体"
+        },
+        {
+          "gene": "DDC",
+          "alias": "AADC",
+          "function": "多巴脱羧酶，多巴胺合成",
+          "category": "合成酶"
+        },
+        {
+          "gene": "NR4A2",
+          "alias": "NURR1",
+          "function": "多巴胺能神经元发育与维持",
+          "category": "转录因子"
+        },
+        {
+          "gene": "LMX1A",
+          "alias": "",
+          "function": "多巴胺能神经元命运决定",
+          "category": "转录因子"
+        },
+        {
+          "gene": "EN1",
+          "alias": "Engrailed-1",
+          "function": "中脑多巴胺能神经元存活",
+          "category": "转录因子"
+        }
+      ],
+      "key_functions": [
+        "多巴胺合成与释放",
+        "运动控制",
+        "奖赏与动机",
+        "认知功能"
+      ],
+      "disease_links": [
+        "帕金森病",
+        "精神分裂症",
+        "成瘾",
+        "多动症(ADHD)"
+      ],
+      "interpretation": {
+        "up": "多巴胺合成/信号增强，可能为代偿或运动功能改变",
+        "down": "多巴胺能神经元功能受损，可能涉及运动障碍或奖赏通路异常"
+      }
+    },
+    {
+      "type": "胆碱能神经元",
+      "type_en": "Cholinergic Neuron",
+      "description": "以乙酰胆碱为递质的神经元，在基底前脑和脑干分布较多",
+      "markers": [
+        {
+          "gene": "CHAT",
+          "alias": "Choline Acetyltransferase",
+          "function": "胆碱乙酰转移酶，乙酰胆碱合成",
+          "category": "合成酶"
+        },
+        {
+          "gene": "ACHE",
+          "alias": "Acetylcholinesterase",
+          "function": "乙酰胆碱酯酶，乙酰胆碱降解",
+          "category": "代谢酶"
+        },
+        {
+          "gene": "SLC5A7",
+          "alias": "CHT1",
+          "function": "高亲和力胆碱转运体",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "CHRM1",
+          "alias": "M1 Receptor",
+          "function": "毒蕈碱型乙酰胆碱M1受体",
+          "category": "受体"
+        },
+        {
+          "gene": "CHRM2",
+          "alias": "M2 Receptor",
+          "function": "毒蕈碱型乙酰胆碱M2受体",
+          "category": "受体"
+        },
+        {
+          "gene": "CHRNA4",
+          "alias": "",
+          "function": "烟碱型乙酰胆碱alpha4亚基",
+          "category": "受体"
+        },
+        {
+          "gene": "CHRNB2",
+          "alias": "",
+          "function": "烟碱型乙酰胆碱beta2亚基",
+          "category": "受体"
+        },
+        {
+          "gene": "LDB2",
+          "alias": "",
+          "function": "胆碱能神经元发育相关",
+          "category": "转录因子"
+        }
+      ],
+      "key_functions": [
+        "学习与记忆",
+        "注意力调控",
+        "REM睡眠调控",
+        "认知功能维持"
+      ],
+      "disease_links": [
+        "阿尔茨海默病",
+        "路易体痴呆",
+        "重症肌无力"
+      ],
+      "interpretation": {
+        "up": "胆碱能信号增强，可能为代偿反应或认知功能改变",
+        "down": "胆碱能神经元功能减退，可能涉及认知下降和记忆障碍"
+      }
+    },
+    {
+      "type": "血清素能神经元",
+      "type_en": "Serotonergic Neuron",
+      "description": "以5-羟色胺(血清素)为递质的神经元，主要分布于中缝核",
+      "markers": [
+        {
+          "gene": "TPH2",
+          "alias": "Tryptophan Hydroxylase 2",
+          "function": "色氨酸羟化酶2，5-HT合成限速酶(脑)",
+          "category": "合成酶"
+        },
+        {
+          "gene": "SLC6A4",
+          "alias": "SERT",
+          "function": "5-羟色胺转运体，5-HT再摄取",
+          "category": "转运蛋白"
+        },
+        {
+          "gene": "HTR1A",
+          "alias": "5-HT1A Receptor",
+          "function": "5-羟色胺1A受体",
+          "category": "受体"
+        },
+        {
+          "gene": "HTR2A",
+          "alias": "5-HT2A Receptor",
+          "function": "5-羟色胺2A受体",
+          "category": "受体"
+        },
+        {
+          "gene": "DDC",
+          "alias": "AADC",
+          "function": "多巴脱羧酶，也参与5-HT合成",
+          "category": "合成酶"
+        },
+        {
+          "gene": "GATA3",
+          "alias": "",
+          "function": "血清素能神经元发育",
+          "category": "转录因子"
+        },
+        {
+          "gene": "FEV",
+          "alias": "",
+          "function": "血清素能神经元分化和维持",
+          "category": "转录因子"
+        }
+      ],
+      "key_functions": [
+        "情绪调控",
+        "睡眠-觉醒周期",
+        "食欲调节",
+        "疼痛感知",
+        "认知灵活度"
+      ],
+      "disease_links": [
+        "抑郁症",
+        "焦虑症",
+        "强迫症",
+        "偏头痛",
+        "睡眠障碍"
+      ],
+      "interpretation": {
+        "up": "5-HT系统活性增加，可能影响情绪、睡眠或疼痛感知",
+        "down": "血清素能功能减弱，可能涉及情绪障碍、睡眠异常"
+      }
+    }
+  ],
+  "last_updated": "2026-06-24"
+}
