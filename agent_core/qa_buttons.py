@@ -90,7 +90,43 @@ FUNCTION_CLUSTERS = [
 
 
 # ====== Button 1: 通路功能解读 ======
-def pathway_insights(go_results, match_result, local_results=None):
+def _pathway_insights_en(go_results, match_result, local_results=None):
+    lines = ["## Pathway interpretation", ""]
+    if not go_results:
+        return "\n".join(lines + ["No significant GO term was available for interpretation."])
+
+    lines.append(
+        f"The current run contains {len(go_results)} GO results. "
+        "The strongest terms and overlapping genes are:"
+    )
+    for result in go_results[:10]:
+        fdr = result.get("adjusted_p_value", result.get("p_value", 1))
+        genes = ", ".join(result.get("overlap_genes", [])[:8])
+        lines.append(f"- **{result['go_name']}** (FDR={fdr:.2e}): {genes}")
+
+    cell_types = match_result.get("results", [])
+    if cell_types:
+        labels = ", ".join(
+            item.get("type_en", item["type"]) for item in cell_types[:5]
+        )
+        lines.extend(
+            [
+                "",
+                f"Matched cell-type signals include {labels}. "
+                "These associations may reflect cell-state changes or shifts in cellular composition.",
+            ]
+        )
+    lines.extend(
+        [
+            "",
+            "These results are hypothesis-generating and should be reviewed with the study design, "
+            "brain region, and independent experimental evidence.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def pathway_insights(go_results, match_result, local_results=None, language="zh"):
     """
     将富集通路按功能聚类，给出病理机制解读
 
@@ -108,6 +144,9 @@ def pathway_insights(go_results, match_result, local_results=None):
     str
         格式化后的通路功能解读 Markdown
     """
+    if language == "en":
+        return _pathway_insights_en(go_results, match_result, local_results)
+
     lines = []
     lines.append("## 🧬 通路功能解读与潜在病理机制\n")
     lines.append("基于显著富集的 GO 通路，按功能模块聚类分析：\n")
@@ -262,7 +301,7 @@ def pathway_insights(go_results, match_result, local_results=None):
 
 
 # ====== Button 2: 药物-靶点关联 ======
-def drug_association(go_results, local_results=None):
+def drug_association(go_results, local_results=None, language="zh"):
     """
     基于富集通路返回潜在靶向药物
 
@@ -278,10 +317,18 @@ def drug_association(go_results, local_results=None):
     """
     drugs = _load_drugs()
     lines = []
-    lines.append("## 💊 潜在靶向药物关联\n")
+    lines.append(
+        "## Potential drug-target associations\n"
+        if language == "en"
+        else "## 💊 潜在靶向药物关联\n"
+    )
 
     if drugs is None:
-        lines.append("_药物靶点数据库未加载（需要 core/drug_targets.json）_\n")
+        lines.append(
+            "_The local drug-target database is unavailable._\n"
+            if language == "en"
+            else "_药物靶点数据库未加载（需要 core/drug_targets.json）_\n"
+        )
         lines.append("您也可以自行查询以下在线资源：\n")
         lines.append("- [DrugBank](https://go.drugbank.com/)")
         lines.append("- [DGIdb](https://www.dgidb.org/)")
@@ -305,28 +352,50 @@ def drug_association(go_results, local_results=None):
             break
 
     if not matched_drugs:
-        lines.append("未在本地药物库中找到与当前通路明显匹配的药物。\n")
-        lines.append("以下为神经领域常用药物供参考：\n")
+        lines.append(
+            "No local drug entry directly matched the enriched pathways.\n"
+            if language == "en"
+            else "未在本地药物库中找到与当前通路明显匹配的药物。\n"
+        )
+        lines.append(
+            "Reference entries from the local neural drug database:\n"
+            if language == "en"
+            else "以下为神经领域常用药物供参考：\n"
+        )
         for drug in drugs.get("drugs", [])[:8]:
             lines.append(f"- **{drug['name']}**: {drug.get('mechanism', '')}")
         lines.append("")
         return "\n".join(lines)
 
-    lines.append(f"根据富集通路，匹配到 {len(matched_drugs)} 种潜在相关药物：\n")
+    lines.append(
+        f"Matched {len(matched_drugs)} local drug entries based on pathway keywords:\n"
+        if language == "en"
+        else f"根据富集通路，匹配到 {len(matched_drugs)} 种潜在相关药物：\n"
+    )
     for drug in matched_drugs:
         lines.append(f"- **{drug['name']}**")
-        lines.append(f"  - 机制: {drug.get('mechanism', '')}")
-        lines.append(f"  - 靶点: {', '.join(drug.get('targets', []))}")
-        lines.append(f"  - 适用: {drug.get('indication', '')}")
+        lines.append(
+            f"  - {'Mechanism' if language == 'en' else '机制'}: {drug.get('mechanism', '')}"
+        )
+        lines.append(
+            f"  - {'Targets' if language == 'en' else '靶点'}: {', '.join(drug.get('targets', []))}"
+        )
+        lines.append(
+            f"  - {'Database indication' if language == 'en' else '适用'}: {drug.get('indication', '')}"
+        )
         lines.append("")
 
-    lines.append("---\n⚠️ *以上仅为基于通路匹配的计算推测，不代表用药建议。*")
+    lines.append(
+        "---\n*Computational pathway matching only; this is not a medication recommendation.*"
+        if language == "en"
+        else "---\n⚠️ *以上仅为基于通路匹配的计算推测，不代表用药建议。*"
+    )
     return "\n".join(lines)
 
 
 # ====== Button 3: 分析摘要导出 ======
 def analysis_summary(filter_result, match_result, enrichment_result, quality,
-                     input_file="", fc_cutoff=1.0, p_cutoff=0.05):
+                     input_file="", fc_cutoff=1.0, p_cutoff=0.05, language="zh"):
     """
     生成可供复制分享的分析摘要
 
@@ -351,6 +420,34 @@ def analysis_summary(filter_result, match_result, enrichment_result, quality,
     local_res = enrichment_result.get("local", [])
 
     lines = []
+    if language == "en":
+        lines.append("=" * 50)
+        lines.append("NeuroDEG Analysis Summary")
+        lines.append("=" * 50)
+        lines.append(f"Input: {input_file or 'uploaded table'}")
+        lines.append(f"Cutoffs: abs(log2FC) > {fc_cutoff}, adjusted p < {p_cutoff}")
+        lines.append(f"Total genes: {s.get('total_genes', '?')}")
+        lines.append(f"Significant genes: {s.get('significant', 0)}")
+        lines.append(f"  Up: {s.get('up', 0)}")
+        lines.append(f"  Down: {s.get('down', 0)}")
+        lines.append("")
+        lines.append(f"Matched cell types: {match_result.get('total_matched_types', 0)}")
+        for cell_type in ct[:5]:
+            lines.append(
+                f"  - {cell_type.get('type_en', cell_type['type'])} "
+                f"({cell_type.get('abbreviation', '')}): "
+                f"{cell_type['matched']}/{cell_type['total_markers']} markers"
+            )
+        lines.append(f"GO results: {len(go_res)}")
+        for result in go_res[:5]:
+            lines.append(
+                f"  - {result['go_name'][:45]}: "
+                f"FDR={result.get('adjusted_p_value', 1):.2e}"
+            )
+        lines.append(f"Quality: {quality.get('grade', '?') if quality else '?'}")
+        lines.append("=" * 50)
+        return "\n".join(lines)
+
     lines.append("=" * 50)
     lines.append("NeuroDEG 分析摘要")
     lines.append("=" * 50)

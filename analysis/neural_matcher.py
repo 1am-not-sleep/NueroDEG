@@ -4,6 +4,8 @@ import json
 import os
 from collections import defaultdict
 
+from agent_core.cell_types import normalize_cell_type
+
 
 def load_knowledge_base(kb_path=None):
     if kb_path is None:
@@ -88,6 +90,7 @@ def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None, use_panglao
 
     results = []
     for ct in kb["cell_types"]:
+        labels = normalize_cell_type(ct["type"], ct.get("type_en", ""))
         ct_up, ct_down = [], []
         for marker in ct["markers"]:
             g = marker["gene"].upper()
@@ -111,7 +114,7 @@ def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None, use_panglao
 
         results.append({
             "type": ct["type"],
-            "type_en": ct.get("type_en", ""),
+            **labels,
             "matched": matched,
             "total_markers": len(ct["markers"]),
             "up_count": len(ct_up),
@@ -136,15 +139,19 @@ def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None, use_panglao
                 with open(supp_path, "r", encoding="utf-8") as f:
                     supp = json.load(f)
                 for ct_name, info in supp.get("cell_types", {}).items():
+                    labels = normalize_cell_type(ct_name)
                     genes = set(g.upper() for g in info["genes"])
                     up_matched = up_genes & genes
                     down_matched = down_genes & genes
                     total_matched = len(up_matched) + len(down_matched)
                     if total_matched < 2:  # Require at least 2 matches for PanglaoDB
                         continue
-                    # Check if we already have this cell type from curated KB (skip overlap)
-                    existing_types = {r["type"] for r in results}
-                    if ct_name in existing_types:
+                    # Deduplicate bilingual/synonym labels against curated results.
+                    existing_types = {
+                        r.get("type_en", r["type"]).lower()
+                        for r in results
+                    }
+                    if labels["type_en"].lower() in existing_types:
                         continue
 
                     affected = [{"gene": g, "function": "PanglaoDB marker", "direction": "up"} for g in sorted(up_matched)]
@@ -152,7 +159,7 @@ def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None, use_panglao
 
                     results.append({
                         "type": ct_name,
-                        "type_en": "",
+                        **labels,
                         "matched": total_matched,
                         "total_markers": info["gene_count"],
                         "up_count": len(up_matched),

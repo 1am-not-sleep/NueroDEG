@@ -21,6 +21,10 @@ class TestNeuralMatcher(unittest.TestCase):
         down = pd.DataFrame({"gene": ["MBP", "SNAP25"]})
         result = match_neural_types(up, down, self.kb, self.g2c)
         self.assertTrue(result["total_matched_types"] > 0)
+        for cell_type in result["results"]:
+            self.assertTrue(cell_type["type_en"])
+            self.assertTrue(cell_type["abbreviation"])
+            self.assertTrue(cell_type["display_name"])
 
 if __name__ == "__main__":
     unittest.main()

@@ -17,6 +17,9 @@ NeuroDEG 是一个基于规则引擎的 Agent 系统，用户上传差异表达�
 - Tool Trace 追踪 + Guardrails 安全机制 + 质量评估
 - Streamlit 分析工作台与结果 ZIP 下载
 - 结构化追问：通路解读、药物靶点关联、基因/细胞类型查询
+- 中文 / English 界面与报告动态切换
+- 上传前数据预览、列名识别和分析产出文件预览
+- Cell type 双语标准名与常用缩写（如 Astro、MG、Oligo、OPC）
 
 ---
 
@@ -203,11 +206,13 @@ streamlit run streamlit_app.py
 ```
 
 浏览器打开后：
-1. 在侧边栏选择"示例数据"或上传自定义 DEG 文件
-2. 调整筛选阈值（可选）
-3. 点击 **开始分析**
-4. 查看概览、可视化、细胞类型、通路、Trace、报告和 Ask Agent
-5. 下载 Markdown 报告或完整 ZIP 结果包
+1. 选择 `中文 / English`
+2. 在侧边栏选择示例数据或上传自定义 DEG 文件
+3. 在 Input preview 中确认数据和列名自动识别结果
+4. 调整筛选阈值并点击开始分析
+5. 查看概览、可视化、双语细胞类型、通路、Trace、报告和 Ask Agent
+6. 在 Artifacts 中预览 CSV、图片、报告与 manifest
+7. 下载 Markdown 报告或完整 ZIP 结果包
 
 ### 运行测试
 
@@ -293,6 +298,7 @@ AIF1,2.3,0.0005
 ```bash
 python -m unittest discover -s tests -v
 python app.py data/example_neuro_deg.csv --output-dir /tmp/neurodeg-demo
+python app.py data/example_neuro_deg.csv --language en --output-dir /tmp/neurodeg-en
 python app.py data/missing_p_adj.csv --no-vis
 ```
 

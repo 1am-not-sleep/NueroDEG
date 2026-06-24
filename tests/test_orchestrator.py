@@ -54,6 +54,22 @@ class TestOrchestrator(unittest.TestCase):
         self.assertEqual(completed.returncode, 1)
         self.assertIn("ERROR:", completed.stderr)
 
+    def test_english_report_generation(self):
+        with tempfile.TemporaryDirectory() as output_dir:
+            run = run_analysis(
+                "data/example_neuro_deg.csv",
+                output_dir=output_dir,
+                generate_visuals=False,
+                quiet=True,
+                report_language="en",
+            )
+            self.assertTrue(
+                run.state.report.startswith(
+                    "# NeuroDEG Differential-Expression Report"
+                )
+            )
+            self.assertEqual(run.state.params["report_language"], "en")
+
 
 if __name__ == "__main__":
     unittest.main()

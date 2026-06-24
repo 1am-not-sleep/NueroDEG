@@ -23,6 +23,12 @@ def build_parser():
     parser.add_argument("--use-api", action="store_true", help="Enable optional Enrichr enrichment")
     parser.add_argument("--no-vis", action="store_true", help="Skip plot generation")
     parser.add_argument("--quiet", action="store_true", help="Reduce terminal output")
+    parser.add_argument(
+        "--language",
+        choices=["zh", "en"],
+        default="zh",
+        help="Generated report language",
+    )
     parser.add_argument("--streamlit", action="store_true", help="Launch the Streamlit interface")
     return parser
 
@@ -50,6 +56,7 @@ def main(argv=None):
             use_api=args.use_api,
             generate_visuals=not args.no_vis,
             quiet=args.quiet,
+            report_language=args.language,
         )
     except AnalysisRunError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

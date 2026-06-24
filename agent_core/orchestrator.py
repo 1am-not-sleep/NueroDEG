@@ -54,6 +54,7 @@ def run_analysis(
     use_api=False,
     generate_visuals=True,
     quiet=False,
+    report_language="zh",
 ):
     run_id = make_run_id()
     if output_dir is None:
@@ -68,6 +69,7 @@ def run_analysis(
             "p_cutoff": p_cutoff,
             "use_api": use_api,
             "generate_visuals": generate_visuals,
+            "report_language": report_language,
         },
         run_id=run_id,
         output_dir=output_dir,
@@ -176,6 +178,7 @@ def run_analysis(
         state.enrichment_result,
         input_file=os.path.basename(str(input_file)),
         output_path=report_path,
+        language=report_language,
     )
     state.artifacts["report"] = report_path
     trace.finish(step, "success", {"path": report_path})

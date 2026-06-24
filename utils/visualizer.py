@@ -97,7 +97,7 @@ def plot_cell_type_bar(match_result, output_path=None):
     if not results:
         return
     ct_names = [
-        r["type"] if _CN_FONT_AVAILABLE or not r.get("type_en") else r["type_en"]
+        f"{r.get('abbreviation', '')}\n{r.get('type_en') or r['type']}".strip()
         for r in results
     ]
     up = [r["up_count"] for r in results]

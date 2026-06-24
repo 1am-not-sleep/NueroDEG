@@ -11,7 +11,11 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from analysis.loader import detect_column
+from analysis.interpreter import render_report
 from agent_core.chat import load_kb, query_cell_type, query_gene
+from agent_core.i18n import translate
+from agent_core.memory import save_run
 from agent_core.orchestrator import AnalysisRunError, run_analysis
 from agent_core.qa_buttons import analysis_summary, drug_association, pathway_insights
 
@@ -21,24 +25,40 @@ EXAMPLE_PATH = ROOT / "data" / "example_neuro_deg.csv"
 
 st.set_page_config(page_title="NeuroDEG", layout="wide")
 
+language = st.sidebar.segmented_control(
+    "Language / 界面语言",
+    ["zh", "en"],
+    default="zh",
+    format_func=lambda value: "中文" if value == "zh" else "English",
+    key="ui_language",
+)
+t = lambda key: translate(language, key)
+
+subtitle = (
+    "验证神经相关 DEG 表，识别细胞类型信号，运行离线 GO 富集，"
+    "检查 Agent 决策并导出可复现的分析结果。"
+    if language == "zh"
+    else (
+        "Validate neural DEG tables, identify cell-type signals, run offline GO enrichment, "
+        "inspect agent decisions, and export a reproducible analysis bundle."
+    )
+)
+
 st.markdown(
-    """
+    f"""
     <style>
-    .block-container {padding-top: 1.4rem; padding-bottom: 2.5rem; max-width: 1440px;}
-    .app-kicker {font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;}
-    .app-title {font-size: 2rem; font-weight: 720; color: #172033; margin: 0.2rem 0 0.3rem;}
-    .app-subtitle {color: #526070; max-width: 900px; margin-bottom: 1.2rem;}
-    .status-ready {color: #087f5b; font-weight: 700;}
-    .status-review {color: #b45309; font-weight: 700;}
-    .status-blocked {color: #b42318; font-weight: 700;}
-    div[data-testid="stMetric"] {border-top: 2px solid #d8dee8; padding-top: 0.65rem;}
+    .block-container {{padding-top: 1.4rem; padding-bottom: 2.5rem; max-width: 1440px;}}
+    .app-kicker {{font-size: 0.78rem; color: #64748b; font-weight: 700; text-transform: uppercase;}}
+    .app-title {{font-size: 2rem; font-weight: 720; color: #172033; margin: 0.2rem 0 0.3rem;}}
+    .app-subtitle {{color: #526070; max-width: 900px; margin-bottom: 1.2rem;}}
+    .status-ready {{color: #087f5b; font-weight: 700;}}
+    .status-review {{color: #b45309; font-weight: 700;}}
+    .status-blocked {{color: #b42318; font-weight: 700;}}
+    div[data-testid="stMetric"] {{border-top: 2px solid #d8dee8; padding-top: 0.65rem;}}
     </style>
-    <div class="app-kicker">Biomedical analysis workspace</div>
+    <div class="app-kicker">{"生物医学分析工作台" if language == "zh" else "Biomedical analysis workspace"}</div>
     <div class="app-title">NeuroDEG</div>
-    <div class="app-subtitle">
-      Validate neural DEG tables, identify cell-type signals, run offline GO enrichment,
-      inspect agent decisions, and export a reproducible analysis bundle.
-    </div>
+    <div class="app-subtitle">{subtitle}</div>
     """,
     unsafe_allow_html=True,
 )
@@ -65,6 +85,33 @@ def create_uploaded_copy(uploaded_file):
     return handle.name
 
 
+def read_preview(uploaded_file):
+    """Read an uploaded table without consuming the Streamlit upload object."""
+    separator = "\t" if Path(uploaded_file.name).suffix.lower() in {".tsv", ".txt"} else ","
+    payload = uploaded_file.getvalue()
+    try:
+        return pd.read_csv(io.BytesIO(payload), sep=separator, encoding="utf-8"), None
+    except UnicodeDecodeError:
+        try:
+            return pd.read_csv(io.BytesIO(payload), sep=separator, encoding="gbk"), None
+        except Exception as exc:
+            return None, str(exc)
+    except Exception as exc:
+        return None, str(exc)
+
+
+def input_column_mapping(frame):
+    gene_column = detect_column(frame, "gene")
+    fold_change_column = detect_column(frame, "log2fc")
+    adjusted_column = detect_column(frame, "padj")
+    raw_p_column = detect_column(frame, "pval")
+    return {
+        "gene": gene_column,
+        "log2FC": fold_change_column,
+        "significance": adjusted_column or raw_p_column,
+    }
+
+
 def build_result_bundle(run):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -83,19 +130,55 @@ def status_class(grade):
     }.get(grade, "")
 
 
+def preview_artifact(label, path):
+    suffix = Path(path).suffix.lower()
+    if suffix == ".csv":
+        frame = pd.read_csv(path)
+        st.dataframe(frame, width="stretch", hide_index=True)
+        st.caption(
+            f"{len(frame)} {t('rows').lower()} · "
+            f"{len(frame.columns)} {t('columns').lower()}"
+        )
+    elif suffix == ".json":
+        import json
+
+        with open(path, encoding="utf-8") as handle:
+            st.json(json.load(handle))
+    elif suffix in {".md", ".txt"}:
+        content = Path(path).read_text(encoding="utf-8")
+        if suffix == ".md":
+            st.markdown(content)
+        else:
+            st.code(content, language="text")
+    elif suffix in {".png", ".jpg", ".jpeg"}:
+        st.image(path, width="stretch")
+    else:
+        st.info(
+            f"{'暂不支持预览' if language == 'zh' else 'Preview is not available for'} {label}."
+        )
+
+
+selected_preview = None
+selected_preview_error = None
+
 with st.sidebar:
-    st.header("Analysis setup")
+    st.header(t("analysis_setup"))
     data_option = st.segmented_control(
-        "Data source",
-        ["Example data", "Upload file"],
-        default="Example data",
+        t("data_source"),
+        ["example", "upload"],
+        default="example",
+        format_func=lambda value: t("example_data") if value == "example" else t("upload_file"),
     )
     uploaded_file = None
-    if data_option == "Upload file":
-        uploaded_file = st.file_uploader("DEG file", type=["csv", "tsv", "txt"])
+    if data_option == "upload":
+        uploaded_file = st.file_uploader(t("deg_file"), type=["csv", "tsv", "txt"])
+        if uploaded_file is not None:
+            selected_preview, selected_preview_error = read_preview(uploaded_file)
+    else:
+        selected_preview = pd.read_csv(EXAMPLE_PATH)
 
     st.download_button(
-        "Download example CSV",
+        t("download_example"),
         EXAMPLE_PATH.read_bytes(),
         file_name="example_neuro_deg.csv",
         mime="text/csv",
@@ -104,58 +187,114 @@ with st.sidebar:
 
     st.divider()
     fc_cutoff = st.number_input(
-        "|log2FC| cutoff",
+        t("fc_cutoff"),
         min_value=0.0,
         max_value=5.0,
         value=1.0,
         step=0.1,
     )
     p_cutoff = st.number_input(
-        "Adjusted p-value cutoff",
+        t("p_cutoff"),
         min_value=0.001,
         max_value=1.0,
         value=0.05,
         step=0.001,
         format="%.3f",
     )
-    use_api = st.toggle("Try Enrichr API", value=False)
+    use_api = st.toggle(t("try_enrichr"), value=False)
 
-    run_button = st.button("Run analysis", type="primary", width="stretch")
-    if st.button("Reset", width="stretch"):
+    upload_unavailable = data_option == "upload" and (
+        uploaded_file is None or selected_preview_error is not None
+    )
+    run_button = st.button(
+        t("run_analysis"),
+        type="primary",
+        width="stretch",
+        disabled=upload_unavailable,
+    )
+    if st.button(t("reset"), width="stretch"):
         reset_analysis()
         st.rerun()
 
-    with st.expander("Accepted input columns"):
+    with st.expander(t("accepted_columns")):
         st.markdown(
-            """
-            Required biological fields:
+            f"""
+            {"必要生物学字段：" if language == "zh" else "Required biological fields:"}
 
-            - gene symbol: `gene`, `symbol`, `gene_name`
-            - fold change: `log2FC`, `logFC`, `fold_change`
-            - significance: `padj`, `p_adj`, `FDR`, or `pvalue`
+            - {"基因名" if language == "zh" else "gene symbol"}: `gene`, `symbol`, `gene_name`
+            - {"倍数变化" if language == "zh" else "fold change"}: `log2FC`, `logFC`, `fold_change`
+            - {"显著性" if language == "zh" else "significance"}: `padj`, `p_adj`, `FDR`, `pvalue`
             """
         )
 
 
+if selected_preview_error:
+    st.error(
+        f"{'无法预览上传表格' if language == 'zh' else 'Unable to preview the uploaded table'}: "
+        f"{selected_preview_error}"
+    )
+elif selected_preview is not None:
+    mapping = input_column_mapping(selected_preview)
+    missing_fields = [name for name, column in mapping.items() if column is None]
+    with st.expander(
+        f"{t('input_preview')} · {len(selected_preview)} "
+        f"{'行' if language == 'zh' else 'rows'} × "
+        f"{len(selected_preview.columns)} {'列' if language == 'zh' else 'columns'}",
+        expanded=st.session_state.get("analysis_run") is None,
+    ):
+        preview_metrics = st.columns(4)
+        preview_metrics[0].metric(t("rows"), len(selected_preview))
+        preview_metrics[1].metric(t("columns"), len(selected_preview.columns))
+        preview_metrics[2].metric(
+            t("gene_column"),
+            mapping["gene"] or ("未找到" if language == "zh" else "Not found"),
+        )
+        preview_metrics[3].metric(
+            t("significance"),
+            mapping["significance"] or ("未找到" if language == "zh" else "Not found"),
+        )
+        st.caption(
+            f"{t('detected_mapping')}: "
+            f"gene = {mapping['gene'] or 'missing'}, "
+            f"log2FC = {mapping['log2FC'] or 'missing'}, "
+            f"significance = {mapping['significance'] or 'missing'}"
+        )
+        st.dataframe(selected_preview.head(20), width="stretch", hide_index=True)
+        if missing_fields:
+            st.warning(
+                f"{t('missing_fields')}: "
+                + ", ".join(missing_fields)
+            )
+        else:
+            st.success(t("columns_detected"))
+
+
 if run_button:
-    if data_option == "Upload file" and uploaded_file is None:
-        st.error("Select a CSV/TSV file before running the analysis.")
+    if data_option == "upload" and uploaded_file is None:
+        st.error(
+            "请先选择 CSV/TSV 文件。" if language == "zh"
+            else "Select a CSV/TSV file before running the analysis."
+        )
     else:
         input_path = (
             str(EXAMPLE_PATH)
-            if data_option == "Example data"
+            if data_option == "example"
             else create_uploaded_copy(uploaded_file)
         )
         source_name = (
             EXAMPLE_PATH.name
-            if data_option == "Example data"
+            if data_option == "example"
             else uploaded_file.name
         )
         web_output_dir = tempfile.mkdtemp(prefix="neurodeg_web_run_")
 
         try:
-            with st.status("Running NeuroDEG tools...", expanded=True) as status:
-                st.write("Validating and normalizing the DEG table")
+            with st.status(t("running"), expanded=True) as status:
+                st.write(
+                    "正在校验并标准化 DEG 表"
+                    if language == "zh"
+                    else "Validating and normalizing the DEG table"
+                )
                 run = run_analysis(
                     input_file=input_path,
                     fc_cutoff=fc_cutoff,
@@ -164,15 +303,24 @@ if run_button:
                     use_api=use_api,
                     generate_visuals=True,
                     quiet=True,
+                    report_language=language,
                 )
-                st.write("Cell-type matching and pathway enrichment completed")
-                st.write("Report, trace, and reproducibility manifest generated")
-                status.update(label="Analysis complete", state="complete", expanded=False)
+                st.write(
+                    "细胞类型匹配与通路富集完成"
+                    if language == "zh"
+                    else "Cell-type matching and pathway enrichment completed"
+                )
+                st.write(
+                    "已生成报告、Agent 轨迹和可复现 manifest"
+                    if language == "zh"
+                    else "Report, trace, and reproducibility manifest generated"
+                )
+                status.update(label=t("analysis_complete"), state="complete", expanded=False)
             st.session_state.analysis_run = run
             st.session_state.analysis_source = source_name
             st.session_state.active_followup = None
         except AnalysisRunError as exc:
-            st.error(f"Analysis stopped: {exc}")
+            st.error(f"{t('analysis_stopped')}: {exc}")
         except Exception as exc:
             st.exception(exc)
 
@@ -180,32 +328,57 @@ if run_button:
 run = st.session_state.get("analysis_run")
 
 if run is None:
-    preview = pd.read_csv(EXAMPLE_PATH)
-    st.subheader("Ready to analyze")
-    st.write(
-        "The example dataset is selected by default. Adjust thresholds in the sidebar "
-        "or upload your own DEG table, then run the analysis."
-    )
-    preview_col, workflow_col = st.columns([1.6, 1])
-    with preview_col:
-        st.markdown("#### Example data preview")
-        st.dataframe(preview.head(12), width="stretch", hide_index=True)
+    st.subheader(t("ready"))
+    st.write(t("ready_text"))
+    workflow_col, output_col = st.columns(2)
     with workflow_col:
-        st.markdown("#### Agent workflow")
+        st.markdown(f"#### {t('agent_workflow')}")
         st.markdown(
             """
-            1. Input validation and column normalization
-            2. DEG filtering
-            3. Neural cell-type matching
-            4. Offline GO and local pathway enrichment
-            5. Volcano and cell-type plots
-            6. Guardrails, quality grading, and report generation
+            1. 输入校验 / Input validation
+            2. DEG 筛选 / DEG filtering
+            3. 细胞类型匹配 / Cell-type matching
+            4. GO 与本地通路富集 / Pathway enrichment
+            5. 火山图与细胞类型图 / Visualizations
+            6. 安全检查、质量评级和报告 / Guardrails and report
+            """
+        )
+    with output_col:
+        st.markdown(f"#### {t('output_previews')}")
+        st.markdown(
+            f"""
+            {"分析后可直接预览：" if language == "zh" else "After analysis, preview:"}
+
+            - {"火山图与细胞类型图" if language == "zh" else "volcano and cell-type plots"}
+            - {"上下调 DEG 表" if language == "zh" else "up/down DEG tables"}
+            - {"GO 与精选通路结果" if language == "zh" else "GO and curated pathways"}
+            - {"Markdown 报告" if language == "zh" else "Markdown report"}
+            - {"运行 manifest 与 Agent 轨迹" if language == "zh" else "run manifest and agent trace"}
             """
         )
     st.stop()
 
 
 state = run.state
+if state.params.get("report_language") != language:
+    report_path = state.artifacts.get("report")
+    state.report = render_report(
+        state.filter_result,
+        state.match_result,
+        state.enrichment_result,
+        input_file=st.session_state.get("analysis_source", ""),
+        output_path=report_path,
+        language=language,
+    )
+    state.params["report_language"] = language
+    save_run(
+        state,
+        run.trace,
+        run.quality,
+        output_dir=run.output_dir,
+        run_id=state.run_id,
+    )
+
 summary = state.filter_result["summary"]
 match_result = state.match_result
 enrichment = state.enrichment_result
@@ -213,42 +386,43 @@ quality = run.quality
 grade = quality["grade"]
 
 st.markdown(
-    f"Source: `{st.session_state.get('analysis_source', '')}` &nbsp;·&nbsp; "
-    f"Run: `{state.run_id}` &nbsp;·&nbsp; "
-    f"Status: <span class='{status_class(grade)}'>{grade.upper()}</span>",
+    f"{t('source')}: `{st.session_state.get('analysis_source', '')}` &nbsp;·&nbsp; "
+    f"{t('run')}: `{state.run_id}` &nbsp;·&nbsp; "
+    f"{t('status')}: <span class='{status_class(grade)}'>{grade.upper()}</span>",
     unsafe_allow_html=True,
 )
 
 metric_columns = st.columns(6)
-metric_columns[0].metric("Genes", summary["total_genes"])
-metric_columns[1].metric("Significant", summary["significant"])
-metric_columns[2].metric("Up", summary["up"])
-metric_columns[3].metric("Down", summary["down"])
-metric_columns[4].metric("Cell types", match_result["total_matched_types"])
-metric_columns[5].metric("GO terms", len(enrichment.get("go", [])))
+metric_columns[0].metric(t("genes"), summary["total_genes"])
+metric_columns[1].metric(t("significant"), summary["significant"])
+metric_columns[2].metric(t("up"), summary["up"])
+metric_columns[3].metric(t("down"), summary["down"])
+metric_columns[4].metric(t("cell_types"), match_result["total_matched_types"])
+metric_columns[5].metric(t("go_terms"), len(enrichment.get("go", [])))
 
 if state.warnings:
-    with st.expander(f"Run notes ({len(state.warnings)})", expanded=grade != "ready"):
+    with st.expander(f"{t('run_notes')} ({len(state.warnings)})", expanded=grade != "ready"):
         for warning in state.warnings:
             st.warning(warning)
 
 tabs = st.tabs(
     [
-        "Overview",
-        "Visualizations",
-        "Cell types",
-        "Pathway enrichment",
-        "Agent trace",
-        "Report",
-        "Ask Agent",
+        t("overview"),
+        t("visualizations"),
+        t("cell_types"),
+        t("pathway_enrichment"),
+        t("agent_trace"),
+        t("report"),
+        t("artifacts"),
+        t("ask_agent"),
     ]
 )
 
 with tabs[0]:
     left, right = st.columns([1.5, 1])
     with left:
-        st.markdown("#### Differential-expression summary")
-        gene_tabs = st.tabs(["Top up-regulated", "Top down-regulated"])
+        st.markdown(f"#### {t('deg_summary')}")
+        gene_tabs = st.tabs([t("top_up"), t("top_down")])
         with gene_tabs[0]:
             st.dataframe(
                 state.filter_result["up"][["gene", "log2fc", "padj"]].head(15),
@@ -262,23 +436,31 @@ with tabs[0]:
                 hide_index=True,
             )
     with right:
-        st.markdown("#### Quality assessment")
+        st.markdown(f"#### {t('quality')}")
         st.markdown(
             f"<div class='{status_class(grade)}'>{grade.upper()}</div>",
             unsafe_allow_html=True,
         )
-        for reason in quality.get("reasons", []):
-            st.write(f"- {reason}")
-        st.markdown("#### Export")
+        if language == "en":
+            quality_messages = {
+                "ready": "Input validation, cell-type matching, and safety checks passed.",
+                "review": "The analysis completed, but one or more findings require review.",
+                "blocked": "The current input does not support a reliable biological interpretation.",
+            }
+            st.write(f"- {quality_messages.get(grade, grade)}")
+        else:
+            for reason in quality.get("reasons", []):
+                st.write(f"- {reason}")
+        st.markdown(f"#### {t('export')}")
         st.download_button(
-            "Download report",
+            t("download_report"),
             state.report,
             file_name=f"{state.run_id}_report.md",
             mime="text/markdown",
             width="stretch",
         )
         st.download_button(
-            "Download result bundle",
+            t("download_bundle"),
             build_result_bundle(run),
             file_name=f"{state.run_id}_results.zip",
             mime="application/zip",
@@ -288,50 +470,67 @@ with tabs[0]:
 with tabs[1]:
     plot_columns = st.columns(2)
     with plot_columns[0]:
-        st.markdown("#### Volcano plot")
+        st.markdown(f"#### {t('volcano_plot')}")
         volcano_path = state.artifacts.get("volcano_plot")
         if volcano_path and os.path.exists(volcano_path):
             st.image(volcano_path, width="stretch")
         else:
-            st.info("Volcano plot was not generated.")
+            st.info("未生成火山图。" if language == "zh" else "Volcano plot was not generated.")
     with plot_columns[1]:
-        st.markdown("#### Cell-type marker changes")
+        st.markdown(f"#### {t('cell_type_changes')}")
         cell_type_path = state.artifacts.get("cell_type_bar")
         if cell_type_path and os.path.exists(cell_type_path):
             st.image(cell_type_path, width="stretch")
         else:
-            st.info("No cell-type plot is available for this run.")
+            st.info(
+                "当前运行没有细胞类型图。"
+                if language == "zh"
+                else "No cell-type plot is available for this run."
+            )
 
 with tabs[2]:
     if not match_result["results"]:
-        st.info("No neural cell-type marker pattern passed the current decision threshold.")
+        st.info(t("no_cell_type"))
     else:
         cell_rows = [
             {
-                "cell_type": item["type"],
-                "source": item.get("source", ""),
-                "matched": item["matched"],
-                "marker_total": item["total_markers"],
-                "up": item["up_count"],
-                "down": item["down_count"],
-                "direction": item["main_direction"],
+                t("chinese_name"): item.get("type_zh", ""),
+                t("english_name"): item.get("type_en", item["type"]),
+                t("abbreviation"): item.get("abbreviation", ""),
+                ("来源" if language == "zh" else "Source"): item.get("source", ""),
+                ("匹配 marker" if language == "zh" else "Matched"): item["matched"],
+                ("marker 总数" if language == "zh" else "Marker total"): item["total_markers"],
+                t("up"): item["up_count"],
+                t("down"): item["down_count"],
+                ("主要方向" if language == "zh" else "Direction"): item["main_direction"],
             }
             for item in match_result["results"]
         ]
         st.dataframe(pd.DataFrame(cell_rows), width="stretch", hide_index=True)
         for item in match_result["results"]:
             with st.expander(
-                f"{item['type']} · {item['matched']}/{item['total_markers']} markers"
+                f"{item.get('display_name', item['type'])} · "
+                f"{item['matched']}/{item['total_markers']} markers"
             ):
-                st.write(f"Source: {item.get('source', '')}")
-                st.write(f"Up-regulated markers: {item['up_genes'] or 'None'}")
-                st.write(f"Down-regulated markers: {item['down_genes'] or 'None'}")
+                st.write(
+                    f"{'来源' if language == 'zh' else 'Source'}: {item.get('source', '')}"
+                )
+                st.write(
+                    f"{'上调 marker' if language == 'zh' else 'Up-regulated markers'}: "
+                    f"{item['up_genes'] or ('无' if language == 'zh' else 'None')}"
+                )
+                st.write(
+                    f"{'下调 marker' if language == 'zh' else 'Down-regulated markers'}: "
+                    f"{item['down_genes'] or ('无' if language == 'zh' else 'None')}"
+                )
                 st.write(item["interpretation"])
 
 with tabs[3]:
     go_results = enrichment.get("go", [])
     local_results = enrichment.get("local", [])
-    enrichment_tabs = st.tabs(["GO overrepresentation", "Curated pathways", "Enrichr"])
+    enrichment_tabs = st.tabs(
+        [t("go_overrepresentation"), t("curated_pathways"), t("enrichr")]
+    )
     with enrichment_tabs[0]:
         if go_results:
             go_table = pd.DataFrame(
@@ -357,28 +556,42 @@ with tabs[3]:
                 },
             )
         else:
-            st.info("No GO terms passed the configured criteria.")
+            st.info(
+                "未发现符合当前标准的 GO 通路。"
+                if language == "zh"
+                else "No GO terms passed the configured criteria."
+            )
     with enrichment_tabs[1]:
         if local_results:
             st.dataframe(pd.DataFrame(local_results), width="stretch", hide_index=True)
         else:
-            st.info("No curated pathway overlap was detected.")
+            st.info(
+                "未检测到精选通路重叠。"
+                if language == "zh"
+                else "No curated pathway overlap was detected."
+            )
     with enrichment_tabs[2]:
         api_status = enrichment.get("api_status", "disabled")
         if api_status == "success":
             st.dataframe(pd.DataFrame(enrichment["api"]), width="stretch", hide_index=True)
         elif api_status == "failed":
             st.warning(
-                "Enrichr was unavailable. Offline GO and curated pathway results remain valid."
+                "Enrichr 不可用，离线 GO 与精选通路结果仍然有效。"
+                if language == "zh"
+                else "Enrichr was unavailable. Offline GO and curated pathway results remain valid."
             )
             st.caption(enrichment.get("api_error", ""))
         else:
-            st.info("Enrichr was not requested for this run.")
+            st.info(
+                "当前运行未启用 Enrichr。"
+                if language == "zh"
+                else "Enrichr was not requested for this run."
+            )
 
 with tabs[4]:
     trace_table = pd.DataFrame(run.trace.to_list())
     st.dataframe(trace_table, width="stretch", hide_index=True)
-    st.markdown("#### Guardrails")
+    st.markdown(f"#### {t('guardrails')}")
     if run.guardrail_warnings:
         st.dataframe(
             pd.DataFrame(run.guardrail_warnings),
@@ -386,11 +599,11 @@ with tabs[4]:
             hide_index=True,
         )
     else:
-        st.success("No guardrail warning was raised.")
+        st.success(t("no_guardrail"))
 
 with tabs[5]:
     st.download_button(
-        "Download Markdown report",
+        t("download_report"),
         state.report,
         file_name=f"{state.run_id}_report.md",
         mime="text/markdown",
@@ -398,25 +611,59 @@ with tabs[5]:
     st.markdown(state.report)
 
 with tabs[6]:
+    artifact_rows = []
+    for name, path in state.artifacts.items():
+        if path and os.path.exists(path):
+            artifact_rows.append(
+                {
+                    "artifact": name,
+                    "file": os.path.basename(path),
+                    "type": Path(path).suffix.lower().lstrip("."),
+                    "size_kb": round(os.path.getsize(path) / 1024, 1),
+                    "path": path,
+                }
+            )
+
+    st.dataframe(
+        pd.DataFrame(artifact_rows).drop(columns=["path"]),
+        width="stretch",
+        hide_index=True,
+    )
+    artifact_options = {
+        f"{row['artifact']} · {row['file']}": row["path"]
+        for row in artifact_rows
+    }
+    selected_artifact = st.selectbox(
+        t("preview_artifact"),
+        list(artifact_options),
+    )
+    if selected_artifact:
+        preview_artifact(selected_artifact, artifact_options[selected_artifact])
+
+with tabs[7]:
     st.markdown(
-        "Use structured follow-ups to interpret pathways, inspect drug-target associations, "
-        "or query the local marker knowledge base."
+        "使用结构化追问解读通路、查看药物靶点关联，或查询本地 marker 知识库。"
+        if language == "zh"
+        else (
+            "Use structured follow-ups to interpret pathways, inspect drug-target associations, "
+            "or query the local marker knowledge base."
+        )
     )
     followup_columns = st.columns(3)
-    if followup_columns[0].button("Interpret pathways", width="stretch"):
+    if followup_columns[0].button(t("interpret_pathways"), width="stretch"):
         st.session_state.active_followup = "pathways"
-    if followup_columns[1].button("Drug-target associations", width="stretch"):
+    if followup_columns[1].button(t("drug_targets"), width="stretch"):
         st.session_state.active_followup = "drugs"
-    if followup_columns[2].button("Generate concise summary", width="stretch"):
+    if followup_columns[2].button(t("concise_summary"), width="stretch"):
         st.session_state.active_followup = "summary"
 
     active = st.session_state.get("active_followup")
     if active == "pathways":
         st.markdown(
-            pathway_insights(go_results, match_result, local_results)
+            pathway_insights(go_results, match_result, local_results, language=language)
         )
     elif active == "drugs":
-        st.markdown(drug_association(go_results, local_results))
+        st.markdown(drug_association(go_results, local_results, language=language))
     elif active == "summary":
         concise = analysis_summary(
             state.filter_result,
@@ -426,35 +673,25 @@ with tabs[6]:
             input_file=st.session_state.get("analysis_source", ""),
             fc_cutoff=summary["fc_cutoff"],
             p_cutoff=summary["p_cutoff"],
+            language=language,
         )
         st.code(concise, language="text")
 
     st.divider()
     with st.form("knowledge_query"):
         query = st.text_input(
-            "Query a gene or curated cell type",
-            placeholder="Examples: GFAP, MBP, 星形胶质细胞",
+            t("knowledge_query"),
+            placeholder=(
+                "例如：GFAP、MBP、星形胶质细胞、Astrocyte、MG"
+                if language == "zh"
+                else "Examples: GFAP, MBP, Astrocyte, Microglia, OPC"
+            ),
         )
-        submitted = st.form_submit_button("Search knowledge base")
+        submitted = st.form_submit_button(t("search_kb"))
     if submitted and query:
         kb = load_kb()
-        cell_types = [
-            "兴奋性神经元",
-            "抑制性神经元",
-            "星形胶质细胞",
-            "小胶质细胞",
-            "少突胶质细胞",
-            "神经干细胞",
-            "多巴胺能神经元",
-            "胆碱能神经元",
-            "血清素能神经元",
-        ]
-        answer = ""
-        for cell_type in cell_types:
-            if cell_type in query:
-                direction = "up" if "上调" in query else "down" if "下调" in query else ""
-                answer = query_cell_type(cell_type, direction, kb)
-                break
-        if not answer:
+        direction = "up" if "上调" in query else "down" if "下调" in query else ""
+        answer = query_cell_type(query.strip(), direction, kb)
+        if answer.startswith("知识库中未找到细胞类型"):
             answer = query_gene(query.strip(), kb)
         st.markdown(answer)
