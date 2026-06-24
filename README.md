@@ -1,189 +1,52 @@
 # NeuroDEG — 神经细胞基因表达差异分析 Agent
 
-> 🧬 课程作业项目 · 基于 NeuroDEG + NeuroDEG-2 两个原型分支合并重构
+> 🧬 课程作业项目 | 基于 DEG 数据的神经生物学智能分析工具
 
 ---
 
-## 项目定位
+## 项目简介
 
-根据用户上传的 DEG（差异表达基因）文件，自动识别神经细胞相关基因的差异化表达，结合内置的神经细胞知识库进行生物学解读，通过 **Agent 化管道** 展示每一步的分析决策和中间结果，最终输出结构化分析报告。
+NeuroDEG 是一个基于规则引擎的 Agent 系统，用户上传差异表达基因（DEG）表格后，系统自动完成以下流程：
 
----
-
-## 合并背景
-
-| 来源 | 核心优势 | 贡献内容 |
-|:----|:---------|:---------|
-| **NeuroDEG（本分支）** | 知识库扎实，分析逻辑完整 | knowledge_base.json（9种细胞类型，~80标记基因，含方向性解读、疾病关联）；pathways.json（15条通路含KEGG ID）；列名自动识别；双可视化（火山图+柱状图）；报告模板 |
-| **NeuroDEG-2（合作分支）** | Agent架构设计清晰，展示友好 | Streamlit交互界面；Agent Trace追踪框架；Guardrails安全机制；Quality Evaluator质量评估；Run Memory运行记录 |
-
----
-
-## Agent 分析管道
-
-```
-┌──────────────────────────────────────────────┐
-│              ① 输入检查 (Input Checker)        │
-│  ┌─────────────────────────────────────────┐ │
-│  │  自动识别列名 / 校验必填列 / 缺失值处理  │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────┬───────────────────────────┘
-                   ↓
-┌──────────────────────────────────────────────┐
-│              ② DEG 筛选 (DEG Filter)          │
-│  ┌─────────────────────────────────────────┐ │
-│  │  |log2FC| > threshold, padj < cutoff   │ │
-│  │  分离上调/下调 → 统计摘要                │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────┬───────────────────────────┘
-                   ↓
-┌──────────────────────────────────────────────┐
-│              ③ 可视化 (Visualization)          │
-│  ┌─────────────────────────────────────────┐ │
-│  │  火山图 + 细胞类型柱状图                 │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────┬───────────────────────────┘
-                   ↓
-       ╔═══════════════════════════════╗
-       ║  条件决策：显著基因数量是否足够？  ║
-       ║  - 足够 → 继续到④              ║  ← Agent 化分支
-       ║  - 不足 → 跳过④⑤，直接到⑦      ║
-       ╚═══════════════════════════════╝
-              │                  │
-              ↓ (足够)           ↓ (不足)
-┌────────────────────┐    ┌──────────────────────┐
-│ ④ 神经细胞类型匹配   │    │ ⑦ 报告生成 (报提示)  │
-│ (neural_matcher)   │    │ ┌────────────────┐  │
-└─────────┬──────────┘    │ │ 提示: 显著基因少  │  │
-          ↓               │ │ 解释有限        │  │
-┌────────────────────┐    │ └────────────────┘  │
-│ ⑤ 通路富集分析      │    └──────────────────────┘
-│ (local + API)      │
-└─────────┬──────────┘
-          ↓
-┌──────────────────────────────────────────────┐
-│              ⑥ 结果解读 (Interpreter)          │
-│  ┌─────────────────────────────────────────┐ │
-│  │  规则引擎 + 知识库 → Markdown 报告       │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────┬───────────────────────────┘
-                   ↓
-       ╔═══════════════════════════════╗
-       ║  Guardrails：医学声明安全检查    ║
-       ║  - 含"治愈/治疗/诊断"等词 → 警告 ║
-       ╚═══════════════════════════════╝
-                   ↓
-       ╔═══════════════════════════════╗
-       ║  Quality Evaluator：质量评估   ║
-       ║  ready / review / blocked     ║
-       ╚═══════════════════════════════╝
-                   ↓
-┌──────────────────────────────────────────────┐
-│              ⑧ 输出报告 + Run Memory          │
-│  ┌─────────────────────────────────────────┐ │
-│  │  results/<run_id>/                      │ │
-│  │  ├── report.md                          │ │
-│  │  ├── volcano.png                        │ │
-│  │  ├── cell_type_bar.png                  │ │
-│  │  ├── filter_results.csv                 │ │
-│  │  └── run_manifest.json (含 trace)       │ │
-│  └─────────────────────────────────────────┘ │
-└──────────────────────────────────────────────┘
-```
+- 数据校验与标准化
+- 差异基因筛选（可自定义阈值）
+- 神经细胞类型匹配（基于标记基因知识库）
+- GO 神经通路富集（超几何检验 + FDR 校正）
+- 结果可视化（火山图、细胞类型柱状图）
+- 结构化 Markdown 报告生成
+- Tool Trace 追踪 + Guardrails 安全机制 + 质量评估
 
 ---
 
-## 目录结构
+## 数据来源
 
-```
-NeuroDEG-new/
-│
-├── README.md                          ← 项目说明
-│
-├── core/                              ← 知识库核心
-│   ├── knowledge_base.json            ← 9种细胞类型，完整标记基因库
-│   ├── pathways.json                  ← 15条通路 + KEGG ID
-│   └── templates/
-│       └── report_template.md         ← 报告模板
-│
-├── analysis/                          ← 核心分析模块
-│   ├── __init__.py
-│   ├── loader.py                      ← 读取/校验DEG，列名自动识别
-│   ├── filter.py                      ← 差异基因筛选
-│   ├── neural_matcher.py              ← 神经细胞类型 + 通路匹配
-│   ├── enrichment.py                  ← 本地 + Enrichr API 富集
-│   └── interpreter.py                 ← 结果解读 + 报告生成
-│
-├── utils/                             ← 工具模块
-│   ├── __init__.py
-│   └── visualizer.py                  ← 火山图 + 柱状图
-│
-├── agent_core/                        ← Agent 框架
-│   ├── __init__.py
-│   ├── state.py                       ← 运行状态管理
-│   ├── trace.py                       ← Tool trace 记录
-│   ├── guardrails.py                  ← 医学声明安全检查
-│   ├── quality.py                     ← 质量评估 (ready/review/blocked)
-│   ├── memory.py                      ← Run memory + manifest
-│   └── chat.py                        ← Ask Agent 追问接口
-│
-├── app.py                             ← CLI 主入口（增强版）
-├── streamlit_app.py                   ← Streamlit 网页界面
-│
-├── data/                              ← 测试数据
-│   ├── example_neuro_deg.csv          ← 正常输入
-│   ├── missing_p_adj.csv              ← 缺列测试
-│   └── few_significant_genes.csv      ← 临界案例
-│
-├── input/                             ← 用户放置DEG文件
-│   └── .gitkeep
-│
-├── output/                            ← 输出目录
-│   └── .gitkeep
-│
-├── results/                           ← 带时间戳的运行记录
-│   └── .gitkeep
-│
-├── tests/                             ← 单元测试
-│   ├── __init__.py
-│   ├── test_loader.py
-│   ├── test_filter.py
-│   ├── test_neural_matcher.py
-│   ├── test_guardrails.py
-│   └── test_quality.py
-│
-├── docs/                              ← 文档
-│   ├── AGENT_ARCHITECTURE.md
-│   ├── ROADMAP.md
-│   └── SOURCES.md
-│
-└── requirements.txt                   ← 依赖
-```
+### 标记基因知识库（core/knowledge_base.json）
 
----
+| 来源 | 用途 |
+|:----|:------|
+| CellMarker 数据库 | 细胞类型标记基因手工整理 |
+| Allen Brain Atlas | 脑细胞分类体系参考 |
+| GeneCards / NCBI | 基因功能概述与别名核对 |
 
-## 模块设计
+覆盖 **9 种神经细胞类型**，共 **87 个精选标记基因**，每个基因标注了功能描述、功能分类、上调解读、下调解读及疾病关联。
 
-### 1. core/ — 知识库核心
+| 细胞类型 | 标记基因数 | 示例标记基因 |
+|:---------|:----------:|:------------|
+| 兴奋性神经元 | 13 | SLC17A7, CAMK2A, SATB2, GRIN1, GRIA1 |
+| 抑制性神经元 | 12 | GAD1, GAD2, PVALB, SST, VIP |
+| 星形胶质细胞 | 10 | GFAP, S100B, AQP4, ALDH1L1, GLUL |
+| 小胶质细胞 | 11 | AIF1, CD68, TMEM119, CX3CR1, TREM2 |
+| 少突胶质细胞 | 10 | MBP, OLIG2, MOG, PLP1, MAG |
+| 神经干细胞/前体细胞 | 8 | SOX2, NES, PAX6, DCX, ASCL1 |
+| 多巴胺能神经元 | 8 | TH, SLC6A3, DRD2, DRD1, NR4A2 |
+| 胆碱能神经元 | 8 | CHAT, ACHE, SLC5A7, CHRM1, CHRNA4 |
+| 血清素能神经元 | 7 | TPH2, SLC6A4, HTR1A, HTR2A |
 
-**knowledge_base.json** — 9种细胞类型，每种包含：
-- 标记基因列表（gene, alias, function, category）
-- 疾病关联 (disease_links)
-- 上调/下调方向性解读 (interpretation.up / interpretation.down)
+### 通路数据
 
-| 细胞类型 | 标记基因示例 | 基因数 |
-|:---------|:------------|:------:|
-| 兴奋性神经元 | SLC17A7, CAMK2A, SATB2, NRGN, SYT1, GRIN1, GRIA1 | ~13 |
-| 抑制性神经元 | GAD1, GAD2, PVALB, SST, CALB1, VIP, NPY | ~12 |
-| 星形胶质细胞 | GFAP, S100B, AQP4, ALDH1L1, SLC1A2, GLUL | ~10 |
-| 小胶质细胞 | AIF1, CD68, TMEM119, CX3CR1, CSF1R, TREM2 | ~11 |
-| 少突胶质细胞 | MBP, OLIG2, MOG, PLP1, CNP, SOX10, MAG | ~10 |
-| 神经干细胞 | SOX2, NES, PAX6, MKI67, DCX, ASCL1 | ~8 |
-| 多巴胺能神经元 | TH, SLC6A3, DRD2, DRD1, DDC, NR4A2 | ~8 |
-| 胆碱能神经元 | CHAT, ACHE, SLC5A7, CHRM1, CHRNA4 | ~8 |
-| 血清素能神经元 | TPH2, SLC6A4, HTR1A, HTR2A, DDC | ~7 |
+**本地通路库（core/pathways.json）**
 
-**pathways.json** — 15条神经通路 + KEGG ID + 关联细胞类型
+15 条手工整理的神经相关通路，含 KEGG ID：
 
 | 通路 | KEGG ID | 关联细胞类型 |
 |:----|:--------|:------------|
@@ -193,117 +56,216 @@ NeuroDEG-new/
 | 胆碱能突触 | hsa04725 | 胆碱能神经元 |
 | 5-羟色胺能突触 | hsa04726 | 血清素能神经元 |
 | 长时程增强(LTP) | hsa04720 | 兴奋性神经元 |
-| 神经营养因子 | hsa04722 | 所有神经细胞 |
-| 神经炎症 | — | 小胶质、星形胶质细胞 |
-| 反应性胶质增生 | — | 星形胶质、小胶质细胞 |
-| 髓鞘形成 | — | 少突胶质细胞 |
-| 神经发生 | — | 神经干细胞 |
 | 突触囊泡循环 | hsa04721 | 所有神经元 |
-| 钙信号 | hsa04020 | 所有神经细胞 |
-| 自噬-溶酶体 | hsa04140 | 兴奋性、多巴胺能神经元 |
-| 氧化应激 | — | 所有神经细胞 |
+| 钙信号通路 | hsa04020 | 所有神经细胞 |
+| 自噬-溶酶体通路 | hsa04140 | 兴奋性、多巴胺能神经元 |
+| 其他 7 条神经通路... | — | — |
 
-### 2. analysis/ — 核心分析模块
+**GO 神经通路富集（data/go.obo + data/goa_human.gaf.gz）**
 
-| 文件 | 输入 | 输出 | 关键逻辑 |
-|:----|:-----|:-----|:---------|
-| loader.py | CSV/TSV路径 | 标准化DataFrame | 自动检测列别名，处理编码差异 |
-| filter.py | DataFrame+阈值 | 上调/下调/全部+摘要 | 基于padj和log2FC筛选 |
-| neural_matcher.py | 上下调基因 | 细胞类型+通路匹配 | 基因名大写归一化，反向索引 |
-| enrichment.py | 基因列表 | 本地+在线富集 | Enrichr API超时回退本地 |
-| interpreter.py | 所有结果 | Markdown报告 | 规则引擎生成结论+假设 |
+- 从 GO 本体（Gene Ontology）中过滤出 **~2371 条**神经相关的 GO terms（biological process + molecular function）
+- 使用 **超几何检验** 计算富集显著性
+- 采用 **Benjamini-Hochberg 方法** 进行多重假设检验校正
+- 背景基因集：人类基因组 ~38,822 个注释基因
+- 分析结果中包含 p 值和校正后 p 值
 
-### 3. utils/ — 可视化
+### 在线富集（可选）
 
-火山图（Top10基因标注）+ 细胞类型柱状图。matplotlib Agg后端。
+支持通过 Enrichr API（https://maayanlab.cloud/Enrichr/）进行在线 KEGG 通路富集，当网络可用时使用 `--use-api` 参数启用。
 
-### 4. agent_core/ — Agent 框架
+---
 
-**state.py** — 贯穿管线的运行状态
-```python
-class AgentState:
-    def __init__(self, input_file, params):
-        self.params = params
-        self.steps = []          # 步骤记录
-        self.input_df = None
-        self.filter_result = None
-        self.match_result = None
-        self.enrichment_result = None
-        self.report = None
-        self.errors = []
-        self.warnings = []
+## 分析方法
+
+### 分析流程
+
+```
+Input Checker (列名自动识别/校验)
+  → DEG Filter (|log2FC| > threshold, padj < cutoff)
+  → Volcano Plot + Cell Type Bar Chart
+  → [条件决策] 显著基因 ≥ 10?
+    → 是: Neural Cell Type Matching + GO Enrichment + Local Pathway Match
+    → 否: 跳过富集，报告提示
+  → Report Generator (规则引擎 + 知识库)
+  → Guardrails (医学声明安全检查)
+  → Quality Evaluator (ready / review / blocked)
+  → Run Memory (results/<run_id>/run_manifest.json)
 ```
 
-**trace.py** — Tool Trace
-```python
-class StepRecord:
-    def __init__(self, tool_name, input_snapshot, decision):
-        self.tool = tool_name
-        self.status = "running"  # → success|skipped|failed
-        self.input = input_snapshot
-        self.decision = decision
-        self.duration_ms = 0
+### 差异基因筛选标准
+
+- 默认阈值：`|log2FC| > 1.0`, `padj < 0.05`
+- 用户可自定义 `--fc-cutoff` 和 `--p-cutoff`
+
+### 细胞类型识别方法
+
+基于标记基因 overlap 匹配：将上调和下调的差异基因列表与内置知识库中每种细胞类型的标记基因集合进行交叉比对，统计每种细胞类型中有多少标记基因发生了显著变化。
+
+### GO 通路富集方法
+
+使用超几何分布检验：
+
 ```
-TraceRecorder类：维护步骤列表，序列化供manifest输出。
+p = P(X ≥ k) = Σᵢ₌ₖᵐᶦⁿ⁽ⁿ,ᴹ⁾ C(M,i)·C(N-M,n-i) / C(N,n)
 
-**guardrails.py** — 医学声明检查
-- 输入检查：文件是否存在、能否被loader读取
-- 输出检查：报告文本是否含禁忌关键词（"治愈""治疗""cure""diagnose"等）
-
-**quality.py** — 质量评估
-| 等级 | 条件 |
-|:----|:------|
-| ready | 显著>50 + 匹配≥3种 + 无guardrail警告 |
-| review | 显著10-50 或 匹配<3 或 有轻微警告 |
-| blocked | 显著<10 或 严重guardrail警告或加载失败 |
-
-**memory.py** — 运行记录
-```
-results/run_20260624_184200/
-├── report.md, up_genes.csv, down_genes.csv
-├── volcano.png, cell_type_bar.png
-└── run_manifest.json
-```
-manifest包含时间戳、参数、摘要、trace、quality等级、guardrails。
-
-**chat.py** — Ask Agent追问（三级）
-1. "XX基因是什么？" → 查knowledge_base
-2. "上调的XX细胞意味着什么？" → 查interpretation
-3. "总体上说明了什么？" → 复用conclusion
-
-### 5. app.py — CLI主入口
-
-完整执行流程：
-```
-1. 初始化AgentState + TraceRecorder
-2. input_checker()     → loader + trace
-3. deg_filter()        → filter + trace
-4. volcano_plot()      → 可视化 + trace
-5. if 显著 > 10:
-       neural_matcher()
-       enrichment()      ← 条件执行
-   else: warning
-6. report_generator()  → interpreter + trace
-7. guardrails()
-8. quality_evaluator()
-9. memory.save_run()
+其中：
+  N = 背景基因总数 (38,822)
+  M = 通路中的基因数
+  n = 差异基因总数
+  k = 差异基因中属于该通路的基因数
 ```
 
-用法：
+多重检验校正使用 Benjamini-Hochberg FDR 方法。
+
+---
+
+## 目录结构
+
+```
+NeuroDEG/
+│
+├── core/                          ← 知识库核心
+│   ├── knowledge_base.json        ← 9种细胞类型标记基因库
+│   ├── pathways.json              ← 15条神经通路
+│   ├── go_enrichment_cache.json   ← GO 富集预计算缓存
+│   └── templates/report_template.md
+│
+├── analysis/                      ← 核心分析模块
+│   ├── loader.py                  ← DEG 文件加载/校验/列名自动识别
+│   ├── filter.py                  ← 差异基因筛选
+│   ├── neural_matcher.py          ← 神经细胞类型 + 通路匹配
+│   ├── enrichment.py              ← GO 富集 + 本地通路 + Enrichr API
+│   └── interpreter.py             ← 结果解读 + 报告生成
+│
+├── utils/
+│   └── visualizer.py              ← 火山图 + 细胞类型柱状图
+│
+├── agent_core/                    ← Agent 框架
+│   ├── state.py                   ← 运行状态管理
+│   ├── trace.py                   ← Tool Trace 记录
+│   ├── guardrails.py              ← 医学声明安全检查
+│   ├── quality.py                 ← 质量评估 (ready/review/blocked)
+│   ├── memory.py                  ← Run memory + manifest
+│   └── chat.py                    ← Ask Agent 追问
+│
+├── data/                          ← 数据文件
+│   ├── example_neuro_deg.csv      ← 示例 DEG 数据
+│   ├── go.obo                     ← GO 本体（~35 MB）
+│   ├── goa_human.gaf.gz           ← 人类基因-GO 注释（~15 MB）
+│   ├── missing_p_adj.csv          ← 缺列测试数据
+│   └── few_significant_genes.csv  ← 临界测试数据
+│
+├── app.py                         ← CLI 主入口
+├── streamlit_app.py               ← Streamlit 网页界面
+├── requirements.txt               ← 依赖
+├── tests/                         ← 单元测试
+└── docs/                          ← 文档
+```
+
+---
+
+## 安装与使用
+
+### 环境要求
+
+- Python 3.8+
+- pip
+
+### 安装依赖
+
 ```bash
-# 基本
-python app.py data/example_neuro_deg.csv
-# 自定义阈值
-python app.py data/example_neuro_deg.csv --fc-cutoff 1.5 --p-cutoff 0.01
-# 启用在线富集
-python app.py data/example_neuro_deg.csv --use-api
-# 启动网页
-python app.py --streamlit
+pip install -r requirements.txt
 ```
 
-### 6. streamlit_app.py — 网页界面
+### 命令行运行
 
-Tab分页：火山图 | Agent Trace | 神经细胞类型 | 通路富集 | 完整报告 | 质量评估 | Ask Agent
+```bash
+# 使用示例数据（默认阈值）
+python app.py data/example_neuro_deg.csv
+
+# 自定义筛选阈值
+python app.py data/example_neuro_deg.csv --fc-cutoff 1.5 --p-cutoff 0.01
+
+# 启用在线富集 API
+python app.py data/example_neuro_deg.csv --use-api
+
+# 指定输出目录
+python app.py data/example_neuro_deg.csv --output-dir results/my_analysis
+```
+
+### 网页界面
+
+```bash
+streamlit run streamlit_app.py
+```
+
+浏览器打开后：
+1. 在侧边栏选择"示例数据"或上传自定义 DEG 文件
+2. 调整筛选阈值（可选）
+3. 点击 **开始分析**
+4. 查看 7 个 Tab 的分析结果
+
+### 运行测试
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+### 输入数据格式
+
+CSV 文件必须包含以下列（列名自动识别，不区分大小写）：
+
+| 列 | 说明 | 支持的列名示例 |
+|:---|:-----|:-------------|
+| 基因 | Gene symbol | gene, Gene, symbol, gene_name |
+| 差异倍数 | log2 Fold Change | log2FC, log2_fc, fold_change, FC |
+| 校正 P 值 | Adjusted p-value | padj, p_adj, fdr, qvalue, adjusted_p_value |
+
+示例：
+
+```csv
+gene,log2FC,p_adj
+SNAP25,-1.4,0.004
+MBP,-2.1,0.001
+GFAP,1.6,0.01
+AIF1,2.3,0.0005
+```
+
+---
+
+## 输出说明
+
+### CLI 输出
+
+运行完成后在 `output/` 或指定目录下生成：
+
+| 文件 | 内容 |
+|:----|:-----|
+| `report.md` | 完整分析报告（Markdown 格式） |
+| `volcano.png` | 火山图 |
+| `cell_type_bar.png` | 细胞类型匹配柱状图 |
+| `up_genes.csv` | 上调基因列表 |
+| `down_genes.csv` | 下调基因列表 |
+
+### Agent Manifest
+
+每次运行记录保存在 `results/<run_id>/run_manifest.json`，包含：
+
+- 运行参数与时间戳
+- Tool Trace（每个步骤的决策、耗时、状态）
+- 质量评估等级与原因
+- Guardrails 检查结果
+- 数据统计摘要
+
+---
+
+## 局限性
+
+1. 细胞类型识别基于标记基因 overlap，非单细胞反卷积方法
+2. DEG 分析结果为相关性，不能直接证明蛋白水平或功能变化
+3. Bulk RNA-seq 结果可能受细胞比例变化影响
+4. GO 富集基于关键字过滤的神经相关子集，非全库扫描
+5. 报告解读基于规则引擎，仅供研究参考，不构成医学建议
 
 ---
 
@@ -314,78 +276,7 @@ Tab分页：火山图 | Agent Trace | 神经细胞类型 | 通路富集 | 完整
 | 语言 | Python 3.8+ |
 | 数据处理 | pandas, numpy |
 | 可视化 | matplotlib, seaborn |
-| Web界面 | streamlit |
+| Web 界面 | streamlit |
+| 统计检验 | 纯 Python 实现（math.lgamma） |
 | 在线富集 | requests (Enrichr API) |
-| 输出格式 | Markdown + PNG |
 | 测试 | unittest |
-
----
-
-## 开发优先级
-
-### Phase 1 — 基础设施 (Day1上午)
-- core/ + analysis/ + utils/ → 从原NeuroDEG迁移 ✅ 代码已就绪
-- 验证app.py跑通example.csv ✅ 已就绪
-- requirements.txt ✅ 已声明
-
-### Phase 2 — Agent核心 (Day1下午)
-| 文件 | 工时 |
-|:----|:----|
-| state.py | 30min |
-| trace.py | 45min |
-| guardrails.py | 30min |
-| quality.py | 30min |
-| memory.py | 45min |
-| 整合app.py | 1h |
-
-### Phase 3 — Web界面 (Day2上午)
-- Streamlit主框架 1.5h
-- Tab布局 1h
-- 文件上传+参数 30min
-
-### Phase 4 — 收尾 (Day2下午)
-- 测试数据 30min
-- 单元测试 1h
-- 文档 30min
-- Bug fix + 展示准备 1h
-
----
-
-## 交付物清单
-
-- [x] 完整知识库 (core/)
-- [x] 核心分析模块 (analysis/)
-- [x] 可视化模块 (utils/visualizer.py)
-- [x] CLI主入口初版 (app.py)
-- [ ] Agent核心框架 (agent_core/) — **优先开发**
-- [ ] Streamlit网页界面 (streamlit_app.py)
-- [ ] 测试数据 (data/)
-- [ ] 单元测试 (tests/)
-- [ ] 文档 (docs/)
-
----
-
-## 局限性
-
-1. 使用marker-set overlap，非正式GO/KEGG超几何富集
-2. DEG不能直接证明蛋白水平或功能变化
-3. bulk RNA-seq可能受细胞比例变化影响
-4. 报告解读基于规则引擎，仅供参考
-5. Guardrails使用关键词匹配，不能替代专业审核
-
----
-
-## 知识库来源
-
-| 来源 | 用途 |
-|:----|:-----|
-| CellMarker数据库 | 细胞类型标记基因 |
-| Allen Brain Atlas | 脑细胞分类体系 |
-| GeneCards / NCBI | 基因功能概述 |
-| KEGG | 神经相关通路 |
-
----
-
-## License
-
-课程作业，仅限学习用途。
