@@ -1,0 +1,175 @@
+{
+  "run_id": "run_20260624_195818",
+  "timestamp": "2026-06-24T19:58:18.310363",
+  "params": {
+    "fc_cutoff": 1.0,
+    "p_cutoff": 0.05,
+    "use_api": false,
+    "no_vis": false
+  },
+  "summary": {
+    "total_genes": 94,
+    "significant": 39,
+    "up": 20,
+    "down": 19,
+    "fc_cutoff": 1.0,
+    "p_cutoff": 0.05,
+    "top_up": [
+      {
+        "gene": "AIF1",
+        "log2fc": 2.3,
+        "padj": 0.0005
+      },
+      {
+        "gene": "CD68",
+        "log2fc": 2.1,
+        "padj": 0.0008
+      },
+      {
+        "gene": "IL1B",
+        "log2fc": 2.0,
+        "padj": 0.0009
+      },
+      {
+        "gene": "TREM2",
+        "log2fc": 1.9,
+        "padj": 0.001
+      },
+      {
+        "gene": "TNF",
+        "log2fc": 1.8,
+        "padj": 0.001
+      },
+      {
+        "gene": "S100B",
+        "log2fc": 1.8,
+        "padj": 0.008
+      },
+      {
+        "gene": "CCL2",
+        "log2fc": 1.7,
+        "padj": 0.002
+      },
+      {
+        "gene": "CX3CR1",
+        "log2fc": 1.7,
+        "padj": 0.002
+      },
+      {
+        "gene": "TMEM119",
+        "log2fc": 1.6,
+        "padj": 0.003
+      },
+      {
+        "gene": "GFAP",
+        "log2fc": 1.6,
+        "padj": 0.01
+      }
+    ],
+    "top_down": [
+      {
+        "gene": "TH",
+        "log2fc": -2.5,
+        "padj": 0.0001
+      },
+      {
+        "gene": "PLP1",
+        "log2fc": -2.4,
+        "padj": 0.0001
+      },
+      {
+        "gene": "OLIG2",
+        "log2fc": -2.2,
+        "padj": 0.0003
+      },
+      {
+        "gene": "MBP",
+        "log2fc": -2.1,
+        "padj": 0.001
+      },
+      {
+        "gene": "MOG",
+        "log2fc": -1.9,
+        "padj": 0.001
+      },
+      {
+        "gene": "PVALB",
+        "log2fc": -1.8,
+        "padj": 0.002
+      },
+      {
+        "gene": "SLC6A3",
+        "log2fc": -1.7,
+        "padj": 0.003
+      },
+      {
+        "gene": "CNP",
+        "log2fc": -1.6,
+        "padj": 0.002
+      },
+      {
+        "gene": "DRD2",
+        "log2fc": -1.6,
+        "padj": 0.004
+      },
+      {
+        "gene": "SOX10",
+        "log2fc": -1.5,
+        "padj": 0.004
+      }
+    ]
+  },
+  "quality": {
+    "grade": "review",
+    "reasons": [
+      "显著基因较少(39)"
+    ]
+  },
+  "trace": [
+    {
+      "tool": "Input Checker",
+      "status": "success",
+      "decision": "",
+      "duration_ms": 26,
+      "warnings": []
+    },
+    {
+      "tool": "DEG Filter",
+      "status": "success",
+      "decision": "",
+      "duration_ms": 6,
+      "warnings": []
+    },
+    {
+      "tool": "Visualization",
+      "status": "success",
+      "decision": "",
+      "duration_ms": 3986,
+      "warnings": []
+    },
+    {
+      "tool": "Neural Matcher",
+      "status": "success",
+      "decision": "显著基因39>=10",
+      "duration_ms": 16,
+      "warnings": []
+    },
+    {
+      "tool": "Enrichment",
+      "status": "success",
+      "decision": "显著基因39>=10",
+      "duration_ms": 11,
+      "warnings": []
+    },
+    {
+      "tool": "Report Generator",
+      "status": "success",
+      "decision": "",
+      "duration_ms": 2,
+      "warnings": []
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "input_file": "data/example_neuro_deg.csv"
+}
