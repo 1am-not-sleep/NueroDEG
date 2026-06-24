@@ -1,0 +1,229 @@
+{
+  "source": "手工整理，仅供教学参考",
+  "reference": "https://go.drugbank.com",
+  "drugs": [
+    {
+      "name": "米诺环素 (Minocycline)",
+      "mechanism": "小胶质细胞活化抑制剂，抗炎",
+      "targets": [
+        "TLR4",
+        "CASP1",
+        "IL1B"
+      ],
+      "target_pathways": [
+        "neuroinflammation",
+        "microglia",
+        "inflammat"
+      ],
+      "indication": "多发性硬化、脑缺血"
+    },
+    {
+      "name": "芬戈莫德 (Fingolimod)",
+      "mechanism": "S1P受体调节剂，免疫细胞归巢抑制",
+      "targets": [
+        "S1PR1",
+        "S1PR5"
+      ],
+      "target_pathways": [
+        "immune",
+        "inflammat",
+        "neuroinflammation"
+      ],
+      "indication": "复发缓解型多发性硬化"
+    },
+    {
+      "name": "美金刚 (Memantine)",
+      "mechanism": "NMDA受体非竞争性拮抗剂",
+      "targets": [
+        "GRIN1",
+        "GRIN2A",
+        "GRIN2B"
+      ],
+      "target_pathways": [
+        "glutamate",
+        "nmda",
+        "glutamatergic",
+        "excitotoxicity"
+      ],
+      "indication": "中重度阿尔茨海默病"
+    },
+    {
+      "name": "氯胺酮 (Ketamine)",
+      "mechanism": "NMDA受体拮抗剂，快速抗抑郁",
+      "targets": [
+        "GRIN1",
+        "GRIN2A",
+        "GRIN2B",
+        "SLC6A4"
+      ],
+      "target_pathways": [
+        "glutamate",
+        "synapse",
+        "serotonin"
+      ],
+      "indication": "难治性抑郁症"
+    },
+    {
+      "name": "左旋多巴 (Levodopa/L-DOPA)",
+      "mechanism": "多巴胺前体，补充纹状体多巴胺",
+      "targets": [
+        "TH",
+        "DDC",
+        "DRD1",
+        "DRD2"
+      ],
+      "target_pathways": [
+        "dopamine",
+        "dopaminergic"
+      ],
+      "indication": "帕金森病"
+    },
+    {
+      "name": "利鲁唑 (Riluzole)",
+      "mechanism": "谷氨酸释放抑制剂，钠通道阻滞剂",
+      "targets": [
+        "SLC17A7",
+        "SLC1A2",
+        "SCN1A"
+      ],
+      "target_pathways": [
+        "glutamate",
+        "glutamatergic",
+        "axon"
+      ],
+      "indication": "肌萎缩侧索硬化症(ALS)"
+    },
+    {
+      "name": "巴氯芬 (Baclofen)",
+      "mechanism": "GABA-B受体激动剂",
+      "targets": [
+        "GABBR1",
+        "GABBR2"
+      ],
+      "target_pathways": [
+        "gaba",
+        "gabaergic",
+        "inhibitory"
+      ],
+      "indication": "痉挛状态"
+    },
+    {
+      "name": "多奈哌齐 (Donepezil)",
+      "mechanism": "乙酰胆碱酯酶抑制剂，增加突触ACh水平",
+      "targets": [
+        "ACHE"
+      ],
+      "target_pathways": [
+        "acetylcholine",
+        "cholinergic",
+        "synapse"
+      ],
+      "indication": "阿尔茨海默病"
+    },
+    {
+      "name": "SSRI类抗抑郁药",
+      "mechanism": "选择性5-羟色胺再摄取抑制剂",
+      "targets": [
+        "SLC6A4",
+        "HTR1A",
+        "HTR2A"
+      ],
+      "target_pathways": [
+        "serotonin",
+        "serotonergic",
+        "synapse"
+      ],
+      "indication": "抑郁、焦虑"
+    },
+    {
+      "name": "丙戊酸 (Valproic Acid)",
+      "mechanism": "GABA转氨酶抑制剂，电压门控钠通道阻滞剂",
+      "targets": [
+        "GAD1",
+        "GAD2",
+        "SCN1A"
+      ],
+      "target_pathways": [
+        "gaba",
+        "gabaergic",
+        "inhibitory",
+        "ion channel"
+      ],
+      "indication": "癫痫、双相障碍"
+    },
+    {
+      "name": "卡马西平 (Carbamazepine)",
+      "mechanism": "电压门控钠通道阻滞剂",
+      "targets": [
+        "SCN1A",
+        "SCN2A",
+        "SCN3A"
+      ],
+      "target_pathways": [
+        "ion channel",
+        "action potential",
+        "membrane potential"
+      ],
+      "indication": "癫痫、三叉神经痛"
+    },
+    {
+      "name": "阿托伐他汀 (Atorvastatin)",
+      "mechanism": "HMG-CoA还原酶抑制剂，抗炎(非降脂效应)",
+      "targets": [
+        "HMGCR",
+        "TLR4",
+        "NFKB1"
+      ],
+      "target_pathways": [
+        "neuroinflammation",
+        "inflammat",
+        "immune"
+      ],
+      "indication": "脑卒中二级预防"
+    },
+    {
+      "name": "干扰素β (Interferon beta)",
+      "mechanism": "免疫调节，抗炎细胞因子诱导",
+      "targets": [
+        "IFNAR1",
+        "IFNAR2",
+        "IL10"
+      ],
+      "target_pathways": [
+        "immune",
+        "neuroinflammation",
+        "inflammat"
+      ],
+      "indication": "多发性硬化"
+    },
+    {
+      "name": "那他珠单抗 (Natalizumab)",
+      "mechanism": "α4整合素单抗，阻断免疫细胞穿越血脑屏障",
+      "targets": [
+        "ITGA4"
+      ],
+      "target_pathways": [
+        "immune",
+        "neuroinflammation",
+        "blood brain barrier"
+      ],
+      "indication": "复发缓解型多发性硬化"
+    },
+    {
+      "name": "拉莫三嗪 (Lamotrigine)",
+      "mechanism": "电压门控钠通道阻滞剂，谷氨酸释放抑制",
+      "targets": [
+        "SCN1A",
+        "SCN2A",
+        "SLC17A7"
+      ],
+      "target_pathways": [
+        "glutamate",
+        "glutamatergic",
+        "ion channel",
+        "action potential"
+      ],
+      "indication": "癫痫、双相障碍"
+    }
+  ]
+}

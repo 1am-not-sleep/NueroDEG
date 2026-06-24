@@ -54,17 +54,15 @@ with st.sidebar:
     with st.expander("📚 知识库信息", expanded=False):
         st.markdown("""
         **🧠 9 种神经细胞类型**
-        | 细胞类型 | 标记基因数 |
-        |:---------|:----------:|
-        | 兴奋性神经元 | 13 |
-        | 抑制性神经元 | 12 |
-        | 星形胶质细胞 | 10 |
-        | 小胶质细胞 | 11 |
-        | 少突胶质细胞 | 10 |
-        | 神经干细胞/前体细胞 | 8 |
-        | 多巴胺能神经元 | 8 |
-        | 胆碱能神经元 | 8 |
-        | 血清素能神经元 | 7 |
+        | 数据源 | 细胞类型数 | 标记基因数 |
+        |:------|:---------:|:---------:|
+        | Curated 知识库 | 9 | 87 |
+        | PanglaoDB 补充 | 27 | 785 |
+        | **合计** | **36** | **872** |
+
+        **Curated 9 种:** 兴奋性/抑制性神经元 · 星形胶质细胞 · 小胶质细胞 · 少突胶质细胞 · 神经干细胞 · 多巴胺能/胆碱能/血清素能神经元
+        
+        **PanglaoDB 补充 27 种:** Interneurons · Astrocytes · Oligodendrocytes · Microglia · Purkinje neurons · Pyramidal cells · GABAergic/Glutaminergic neurons · 等
         
         **🔬 15 条神经通路**
         | 通路 | KEGG |
@@ -87,9 +85,11 @@ with st.sidebar:
         
         **📖 数据来源**
         - CellMarker 数据库
+        - PanglaoDB 单细胞标记基因库
         - Allen Brain Atlas
         - GeneCards / NCBI
         - KEGG 通路
+        - GO 本体 (Gene Ontology)
         """)
     
     st.header("设置")
@@ -168,6 +168,7 @@ if run_btn or st.session_state.analyzed:
         
         st.session_state.analyzed = True
         st.session_state.df = df
+        st.session_state.input_name = input_name
         st.session_state.filter_result = filter_result
         st.session_state.match_result = match_result
         st.session_state.enrichment_result = enrichment_result
@@ -285,33 +286,101 @@ if st.session_state.analyzed:
             st.success("Guardrails 检查通过")
     
     with tab7:
-        st.subheader("Ask Agent — 追问分析结果")
-        question = st.text_input("输入问题", placeholder="例如: 什么是SLC17A7？或: 星形胶质细胞上调意味着什么？")
-        if question:
-            kb = None
+        st.subheader("🔍 分析延伸 — 追问分析结果")
+        st.markdown("基于本次分析结果，从不同角度深入了解潜在的生物学意义：\n")
+        
+        from agent_core.qa_buttons import pathway_insights, drug_association, analysis_summary
+        
+        col_b1, col_b2, col_b3 = st.columns(3)
+        
+        with col_b1:
+            btn1 = st.button("🧬 通路功能解读", use_container_width=True)
+        with col_b2:
+            btn2 = st.button("💊 药物-靶点关联", use_container_width=True)
+        with col_b3:
+            btn3 = st.button("📄 导出分析摘要", use_container_width=True)
+        
+        st.divider()
+        
+        if "active_tab7_btn" not in st.session_state:
+            st.session_state.active_tab7_btn = None
+        
+        if btn1:
+            st.session_state.active_tab7_btn = "insights"
+        elif btn2:
+            st.session_state.active_tab7_btn = "drugs"
+        elif btn3:
+            st.session_state.active_tab7_btn = "summary"
+        
+        if st.session_state.active_tab7_btn == "insights":
+            with st.spinner("分析通路功能关联..."):
+                try:
+                    result = pathway_insights(
+                        st.session_state.enrichment_result.get("go", []),
+                        st.session_state.match_result,
+                        st.session_state.enrichment_result.get("local", [])
+                    )
+                    st.markdown(result)
+                except Exception as e:
+                    st.error(f"分析失败: {e}")
+        
+        elif st.session_state.active_tab7_btn == "drugs":
+            with st.spinner("检索药物靶点关联..."):
+                try:
+                    result = drug_association(
+                        st.session_state.enrichment_result.get("go", []),
+                        st.session_state.enrichment_result.get("local", [])
+                    )
+                    st.markdown(result)
+                except Exception as e:
+                    st.error(f"检索失败: {e}")
+        
+        elif st.session_state.active_tab7_btn == "summary":
             try:
-                from agent_core.chat import query_gene, query_cell_type, load_kb
-                kb = load_kb()
-                # 简单规则匹配
-                lowered = question.lower()
-                answer = "未能理解问题，请尝试询问基因功能或细胞类型解读。"
-                
-                for ct_type in ["兴奋性神经元", "抑制性神经元", "星形胶质细胞", "小胶质细胞", 
-                                "少突胶质细胞", "神经干细胞", "多巴胺能神经元", "胆碱能神经元", "血清素能神经元"]:
-                    if ct_type in question:
-                        direction = "up" if "上调" in question else ("down" if "下调" in question else "")
-                        answer = query_cell_type(ct_type, direction, kb)
-                        break
-                
-                if answer == "未能理解问题，请尝试询问基因功能或细胞类型解读。":
-                    for ct in kb["cell_types"]:
-                        for m in ct["markers"]:
-                            if m["gene"].upper() in question.upper():
-                                answer = query_gene(m["gene"], kb)
-                                break
-                        if answer != "未能理解问题，请尝试询问基因功能或细胞类型解读。":
-                            break
-                
-                st.markdown(answer)
+                s = st.session_state.filter_result["summary"]
+                result = analysis_summary(
+                    st.session_state.filter_result,
+                    st.session_state.match_result,
+                    st.session_state.enrichment_result,
+                    st.session_state.quality,
+                    input_file=st.session_state.get("input_name", ""),
+                    fc_cutoff=s.get("fc_cutoff", 1.0),
+                    p_cutoff=s.get("p_cutoff", 0.05)
+                )
+                st.code(result, language="text")
+                st.markdown("点击右上角复制按钮或选中文本后 Ctrl+C 复制")
             except Exception as e:
-                st.error(f"查询失败: {e}")
+                st.error(f"生成摘要失败: {e}")
+        
+        # Also keep the original gene query in an expander
+        with st.expander("🔬 查询特定基因或细胞类型", expanded=False):
+            question = st.text_input("输入基因名或细胞类型", placeholder="例如: GFAP 或 星形胶质细胞")
+            if question:
+                try:
+                    from agent_core.chat import query_gene, query_cell_type, load_kb
+                    kb = load_kb()
+                    answer = ""
+                    for ct_type in ["兴奋性神经元", "抑制性神经元", "星形胶质细胞", "小胶质细胞", 
+                                    "少突胶质细胞", "神经干细胞", "多巴胺能神经元", "胆碱能神经元", "血清素能神经元"]:
+                        if ct_type in question:
+                            direction = "up" if "上调" in question else ("down" if "下调" in question else "")
+                            answer = query_cell_type(ct_type, direction, kb)
+                            break
+                    if not answer:
+                        for ct in kb["cell_types"]:
+                            for m in ct["markers"]:
+                                if m["gene"].upper() in question.upper():
+                                    answer = query_gene(m["gene"], kb)
+                                    break
+                            if answer:
+                                break
+                    if answer:
+                        st.markdown(answer)
+                    else:
+                        st.info("未找到匹配信息")
+                except Exception as e:
+                    st.error(f"查询失败: {e}")
+        
+        # Also store input_name for summary
+        if "input_name" not in st.session_state:
+            st.session_state.input_name = input_name if "input_name" in dir() else ""

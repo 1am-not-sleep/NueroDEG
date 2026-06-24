@@ -2,6 +2,7 @@
 
 import json
 import os
+from collections import defaultdict
 
 
 def load_knowledge_base(kb_path=None):
@@ -28,7 +29,57 @@ def load_knowledge_base(kb_path=None):
     return kb, gene_to_cell
 
 
-def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None):
+def load_panglaodb(panglao_path=None):
+    """加载 PanglaoDB 补充标记基因库"""
+    if panglao_path is None:
+        panglao_path = os.path.join(os.path.dirname(__file__), "..", "core", "panglaodb_supplement.json")
+    if not os.path.exists(panglao_path):
+        print("[neural_matcher] PanglaoDB 补充库不存在，跳过")
+        return {}, {}
+    with open(panglao_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    cell_type_map = {}
+    gene_to_cell = defaultdict(list)
+    for ct_name, info in data.get("cell_types", {}).items():
+        cell_type_map[ct_name] = {
+            "type": ct_name,
+            "gene_count": info.get("gene_count", 0),
+        }
+        for gene in info.get("genes", []):
+            gene_to_cell[gene].append(ct_name)
+
+    print(f"[neural_matcher] 加载 PanglaoDB: {len(cell_type_map)} 种细胞类型, {len(gene_to_cell)} 个基因")
+    return dict(cell_type_map), dict(gene_to_cell)
+
+
+def match_panglao_types(deg_up, deg_down, cell_type_map, gene_to_cell):
+    """使用 PanglaoDB 进行细胞类型匹配"""
+    up_genes = set(deg_up["gene"].str.upper().tolist()) if len(deg_up) > 0 else set()
+    down_genes = set(deg_down["gene"].str.upper().tolist()) if len(deg_down) > 0 else set()
+    all_deg = up_genes | down_genes
+
+    results = []
+    for ct_name, info in cell_type_map.items():
+        ct_genes = set(gene_to_cell.keys())  # We'll get specific genes below
+        # Actually, we need the gene list from the supplement
+        pass  # Will get genes from the supplement JSON
+
+    return {"results": [], "total_matched_types": 0}
+
+def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None, use_panglaodb=True):
+    """
+    匹配神经细胞类型（curated KB + 可选 PanglaoDB 补充）
+
+    Parameters
+    ----------
+    deg_up : pd.DataFrame
+    deg_down : pd.DataFrame
+    kb : dict
+    gene_to_cell : dict
+    use_panglaodb : bool
+        是否启用 PanglaoDB 补充匹配
+    """
     if kb is None or gene_to_cell is None:
         kb, gene_to_cell = load_knowledge_base()
 
@@ -71,8 +122,50 @@ def match_neural_types(deg_up, deg_down, kb=None, gene_to_cell=None):
             "down_genes": ", ".join(m["gene"] for m in ct_down),
             "interpretation": "; ".join(parts),
             "disease_hints": "、".join(ct.get("disease_links", [])),
-            "key_functions": ct.get("key_functions", [])
+            "key_functions": ct.get("key_functions", []),
+            "source": "Curated Knowledge Base"
         })
+
+    # PanglaoDB 补充匹配
+    if use_panglaodb:
+        ct_map, g2c = load_panglaodb()
+        if ct_map:
+            # Load supplement to get actual gene lists
+            supp_path = os.path.join(os.path.dirname(__file__), "..", "core", "panglaodb_supplement.json")
+            if os.path.exists(supp_path):
+                with open(supp_path, "r", encoding="utf-8") as f:
+                    supp = json.load(f)
+                for ct_name, info in supp.get("cell_types", {}).items():
+                    genes = set(g.upper() for g in info["genes"])
+                    up_matched = up_genes & genes
+                    down_matched = down_genes & genes
+                    total_matched = len(up_matched) + len(down_matched)
+                    if total_matched < 2:  # Require at least 2 matches for PanglaoDB
+                        continue
+                    # Check if we already have this cell type from curated KB (skip overlap)
+                    existing_types = {r["type"] for r in results}
+                    if ct_name in existing_types:
+                        continue
+
+                    affected = [{"gene": g, "function": "PanglaoDB marker", "direction": "up"} for g in sorted(up_matched)]
+                    affected += [{"gene": g, "function": "PanglaoDB marker", "direction": "down"} for g in sorted(down_matched)]
+
+                    results.append({
+                        "type": ct_name,
+                        "type_en": "",
+                        "matched": total_matched,
+                        "total_markers": info["gene_count"],
+                        "up_count": len(up_matched),
+                        "down_count": len(down_matched),
+                        "main_direction": "上调为主" if len(up_matched) > len(down_matched) else ("下调为主" if len(down_matched) > len(up_matched) else "混合变化"),
+                        "affected_genes": affected,
+                        "up_genes": ", ".join(sorted(up_matched)[:8]),
+                        "down_genes": ", ".join(sorted(down_matched)[:8]),
+                        "interpretation": f"PanglaoDB 单细胞数据库匹配: {ct_name} 相关基因表达改变",
+                        "disease_hints": "",
+                        "key_functions": [],
+                        "source": "PanglaoDB"
+                    })
 
     results.sort(key=lambda x: x["matched"], reverse=True)
     print(f"[neural_matcher] 匹配到 {len(results)} 种细胞类型")
