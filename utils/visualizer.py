@@ -1,46 +1,67 @@
 """visualizer.py — 可视化模块"""
 
+import os
+import tempfile
+from pathlib import Path
+
+os.environ.setdefault(
+    "MPLCONFIGDIR",
+    str(Path(tempfile.gettempdir()) / "neurodeg-matplotlib"),
+)
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-import os
+from matplotlib import font_manager
 
 # ====== 中文字体配置 ======
 _CN_FONT_SET = False
+_CN_FONT_AVAILABLE = False
 
 
 def _setup_cn_font():
     """自动探测并设置中文字体，支持 Windows / macOS / Linux"""
-    global _CN_FONT_SET
+    global _CN_FONT_SET, _CN_FONT_AVAILABLE
     if _CN_FONT_SET:
-        return
+        return _CN_FONT_AVAILABLE
     _CN_FONT_SET = True
+
+    font_files = [
+        "/System/Library/Fonts/Hiragino Sans GB.ttc",
+        "/System/Library/Fonts/STHeiti Medium.ttc",
+        "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    ]
+    for font_path in font_files:
+        if os.path.exists(font_path):
+            font_manager.fontManager.addfont(font_path)
+            family = font_manager.FontProperties(fname=font_path).get_name()
+            plt.rcParams["font.family"] = family
+            plt.rcParams["axes.unicode_minus"] = False
+            _CN_FONT_AVAILABLE = True
+            print(f"[visualizer] 中文字体: {family}")
+            return True
 
     candidates = [
         "Microsoft YaHei",
         "SimHei",
-        "PingFang SC",
         "Noto Sans CJK SC",
         "WenQuanYi Micro Hei",
-        "DejaVu Sans",
     ]
-    from matplotlib.font_manager import findfont
-    for font in candidates:
+    for family in candidates:
         try:
-            findfont(font, fallback_to_default=False)
-            plt.rcParams["font.family"] = font
+            font_manager.findfont(family, fallback_to_default=False)
+            plt.rcParams["font.family"] = family
             plt.rcParams["axes.unicode_minus"] = False
-            print(f"[visualizer] 中文字体: {font}")
-            return
-        except Exception:
+            _CN_FONT_AVAILABLE = True
+            print(f"[visualizer] 中文字体: {family}")
+            return True
+        except ValueError:
             continue
-    # fallback
-    plt.rcParams["font.sans-serif"] = [
-        "Microsoft YaHei", "SimHei", "PingFang SC",
-        "Noto Sans CJK SC", "WenQuanYi Micro Hei", "DejaVu Sans"
-    ]
+
+    plt.rcParams["font.family"] = "DejaVu Sans"
     plt.rcParams["axes.unicode_minus"] = False
+    return False
 
 
 _setup_cn_font()
@@ -64,17 +85,21 @@ def plot_volcano(df_volcano, output_path=None, title="Volcano Plot", fc_cutoff=1
         ax.annotate(g["gene"], (g["log2fc"], g["-log10_padj"]), fontsize=7, alpha=0.8, xytext=(5,5), textcoords="offset points")
     plt.tight_layout()
     if output_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f"[visualizer] 火山图已保存: {output_path}")
     plt.close()
+    return output_path
 
 
 def plot_cell_type_bar(match_result, output_path=None):
     results = match_result.get("results", [])
     if not results:
         return
-    ct_names = [r["type"] for r in results]
+    ct_names = [
+        r["type"] if _CN_FONT_AVAILABLE or not r.get("type_en") else r["type_en"]
+        for r in results
+    ]
     up = [r["up_count"] for r in results]
     down = [r["down_count"] for r in results]
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -94,7 +119,8 @@ def plot_cell_type_bar(match_result, output_path=None):
             ax.text(bar.get_x()+bar.get_width()/2, h, f"{int(h)}", ha="center", va="bottom", fontsize=8)
     plt.tight_layout()
     if output_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
         plt.savefig(output_path, dpi=150, bbox_inches="tight")
         print(f"[visualizer] 柱状图已保存: {output_path}")
     plt.close()
+    return output_path

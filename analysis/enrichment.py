@@ -3,8 +3,8 @@
 import json
 import os
 import math
-import urllib.request
-import urllib.parse
+
+import requests
 
 # ====== Core paths ======
 _CORE = os.path.join(os.path.dirname(__file__), "..", "core")
@@ -48,6 +48,23 @@ def _hypergeom_sf(k, N, K, n):
 _BACKGROUND = 38822  # 人类基因总数（来自 GAF 注释）
 
 
+def _benjamini_hochberg(p_values):
+    """标准 Benjamini-Hochberg FDR，包含反向 cumulative minimum。"""
+    if not p_values:
+        return []
+    order = sorted(range(len(p_values)), key=lambda idx: p_values[idx])
+    adjusted = [1.0] * len(p_values)
+    previous = 1.0
+    total = len(p_values)
+    for rank_index in range(total - 1, -1, -1):
+        original_index = order[rank_index]
+        rank = rank_index + 1
+        value = min(previous, p_values[original_index] * total / rank, 1.0)
+        adjusted[original_index] = value
+        previous = value
+    return adjusted
+
+
 # ====== GO 富集分析 ======
 def run_go_enrichment(deg_genes):
     """
@@ -70,7 +87,7 @@ def run_go_enrichment(deg_genes):
 
     deg_set = {g.upper() for g in deg_genes}
     n = len(deg_set)
-    results = []
+    tested = []
 
     for go_id, term in neuro_terms.items():
         if go_id not in go_genes:
@@ -81,34 +98,30 @@ def run_go_enrichment(deg_genes):
             continue
         overlap = deg_set & set(gene_list)
         k = len(overlap)
-        if k < 2:
-            continue
         pval = _hypergeom_sf(k, _BACKGROUND, M, n)
-        if pval < 0.5:
-            results.append({
-                "go_id": go_id,
-                "go_name": term["name"],
-                "namespace": term.get("namespace", ""),
-                "overlap_genes": sorted(overlap),
-                "overlap_count": k,
-                "pathway_size": M,
-                "ratio": f"{k}/{M}",
-                "p_value": min(pval, 1.0),
-                "adjusted_p_value": None,
-            })
+        tested.append({
+            "go_id": go_id,
+            "go_name": term["name"],
+            "namespace": term.get("namespace", ""),
+            "overlap_genes": sorted(overlap),
+            "overlap_count": k,
+            "pathway_size": M,
+            "ratio": f"{k}/{M}",
+            "p_value": min(pval, 1.0),
+            "adjusted_p_value": None,
+        })
 
-    if not results:
+    if not tested:
         print("[enrichment] GO 富集未找到显著结果")
         return []
 
-    # Benjamini-Hochberg FDR
-    results.sort(key=lambda x: x["p_value"])
-    n_tests = len(results)
-    for i, r in enumerate(results):
-        r["adjusted_p_value"] = min(r["p_value"] * n_tests / (i + 1), 1.0)
+    adjusted = _benjamini_hochberg([row["p_value"] for row in tested])
+    for row, fdr in zip(tested, adjusted):
+        row["adjusted_p_value"] = fdr
+
+    results = [row for row in tested if row["overlap_count"] >= 2]
     results.sort(key=lambda x: x["adjusted_p_value"])
 
-    # 返回显著的，或至少 top 30
     sig = [r for r in results if r["adjusted_p_value"] < 0.1]
     if len(sig) >= 5:
         print(f"[enrichment] GO 富集: {len(sig)} 条显著通路")
@@ -119,17 +132,30 @@ def run_go_enrichment(deg_genes):
 
 # ====== Enrichr API ======
 def enrichr_enrich(genes, gene_set_library="KEGG_2021_Human"):
-    """调用 Enrichr API 进行在线富集分析"""
+    """使用 Enrichr 官方两步 API：addList -> enrich。"""
     if len(genes) == 0:
-        return None
+        return None, "基因列表为空"
     try:
-        encoded = urllib.parse.quote("\n".join(genes))
-        url = f"https://maayanlab.cloud/Enrichr/enrich?geneSetLib={gene_set_library}&list={encoded}"
-        req = urllib.request.Request(url, method="GET")
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            result = json.loads(resp.read().decode())
+        add_response = requests.post(
+            "https://maayanlab.cloud/Enrichr/addList",
+            files={
+                "list": (None, "\n".join(genes)),
+                "description": (None, "NeuroDEG significant genes"),
+            },
+            timeout=30,
+        )
+        add_response.raise_for_status()
+        user_list_id = add_response.json()["userListId"]
+
+        enrich_response = requests.get(
+            "https://maayanlab.cloud/Enrichr/enrich",
+            params={"userListId": user_list_id, "backgroundType": gene_set_library},
+            timeout=30,
+        )
+        enrich_response.raise_for_status()
+        result = enrich_response.json()
         if gene_set_library not in result:
-            return None
+            return None, "Enrichr 返回结果中缺少指定基因集"
         enriched = result[gene_set_library]
         return [
             {
@@ -141,10 +167,10 @@ def enrichr_enrich(genes, gene_set_library="KEGG_2021_Human"):
                 "adjusted_p_value": item[6] if len(item) > 6 else item[2],
             }
             for item in enriched[:15]
-        ]
+        ], None
     except Exception as e:
         print(f"[enrichment] Enrichr API 失败: {e}")
-        return None
+        return None, str(e)
 
 
 # ====== 本地通路匹配 ======
@@ -198,7 +224,13 @@ def run_enrichment(deg_genes, use_api=False):
     if isinstance(deg_genes, set):
         deg_genes = list(deg_genes)
 
-    result = {"go": [], "local": [], "api": None}
+    result = {
+        "go": [],
+        "local": [],
+        "api": None,
+        "api_status": "disabled",
+        "api_error": None,
+    }
 
     # GO 富集（超几何检验 + FDR）
     print("[enrichment] 运行 GO 神经通路富集...")
@@ -209,10 +241,12 @@ def run_enrichment(deg_genes, use_api=False):
 
     if use_api:
         print("[enrichment] 调用 Enrichr API...")
-        result["api"] = enrichr_enrich(deg_genes)
+        result["api"], result["api_error"] = enrichr_enrich(deg_genes)
         if result["api"]:
+            result["api_status"] = "success"
             print(f"[enrichment] API 获取到 {len(result['api'])} 条通路")
         else:
+            result["api_status"] = "failed"
             print("[enrichment] API 不可用")
 
     if not result["go"] and not result["local"] and not result["api"]:

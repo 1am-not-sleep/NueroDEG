@@ -4,11 +4,13 @@ import json
 import os
 import datetime
 
-def make_run_id():
-    return "run_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-def save_run(state, trace, quality, output_dir=None):
-    run_id = make_run_id()
+def make_run_id():
+    return "run_" + datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+
+
+def save_run(state, trace, quality, output_dir=None, run_id=None):
+    run_id = run_id or state.run_id or make_run_id()
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(__file__), "..", "results", run_id)
     os.makedirs(output_dir, exist_ok=True)
@@ -30,10 +32,15 @@ def save_run(state, trace, quality, output_dir=None):
         "trace": trace.to_list(),
         "errors": state.errors,
         "warnings": state.warnings,
-        "input_file": state.input_file
+        "input_file": state.input_file,
+        "artifacts": state.artifacts,
     }
-    with open(os.path.join(output_dir, "run_manifest.json"), "w", encoding="utf-8") as f:
+    manifest_path = os.path.join(output_dir, "run_manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
+    state.run_id = run_id
+    state.output_dir = output_dir
+    state.artifacts["run_manifest"] = manifest_path
     print(f"[memory] 运行记录已保存: {output_dir}")
     return output_dir

@@ -15,6 +15,8 @@ NeuroDEG 是一个基于规则引擎的 Agent 系统，用户上传差异表达�
 - 结果可视化（火山图、细胞类型柱状图）
 - 结构化 Markdown 报告生成
 - Tool Trace 追踪 + Guardrails 安全机制 + 质量评估
+- Streamlit 分析工作台与结果 ZIP 下载
+- 结构化追问：通路解读、药物靶点关联、基因/细胞类型查询
 
 ---
 
@@ -82,10 +84,10 @@ NeuroDEG 是一个基于规则引擎的 Agent 系统，用户上传差异表达�
 ```
 Input Checker (列名自动识别/校验)
   → DEG Filter (|log2FC| > threshold, padj < cutoff)
-  → Volcano Plot + Cell Type Bar Chart
   → [条件决策] 显著基因 ≥ 10?
     → 是: Neural Cell Type Matching + GO Enrichment + Local Pathway Match
     → 否: 跳过富集，报告提示
+  → Volcano Plot + Cell Type Bar Chart
   → Report Generator (规则引擎 + 知识库)
   → Guardrails (医学声明安全检查)
   → Quality Evaluator (ready / review / blocked)
@@ -141,6 +143,7 @@ NeuroDEG/
 │   └── visualizer.py              ← 火山图 + 细胞类型柱状图
 │
 ├── agent_core/                    ← Agent 框架
+│   ├── orchestrator.py            ← CLI/Web 共用分析流程
 │   ├── state.py                   ← 运行状态管理
 │   ├── trace.py                   ← Tool Trace 记录
 │   ├── guardrails.py              ← 医学声明安全检查
@@ -168,7 +171,7 @@ NeuroDEG/
 
 ### 环境要求
 
-- Python 3.8+
+- Python 3.10+
 - pip
 
 ### 安装依赖
@@ -203,7 +206,8 @@ streamlit run streamlit_app.py
 1. 在侧边栏选择"示例数据"或上传自定义 DEG 文件
 2. 调整筛选阈值（可选）
 3. 点击 **开始分析**
-4. 查看 7 个 Tab 的分析结果
+4. 查看概览、可视化、细胞类型、通路、Trace、报告和 Ask Agent
+5. 下载 Markdown 报告或完整 ZIP 结果包
 
 ### 运行测试
 
@@ -237,7 +241,7 @@ AIF1,2.3,0.0005
 
 ### CLI 输出
 
-运行完成后在 `output/` 或指定目录下生成：
+默认运行会创建 `results/<run_id>/`；使用 `--output-dir` 时所有文件统一写入指定目录：
 
 | 文件 | 内容 |
 |:----|:-----|
@@ -246,10 +250,11 @@ AIF1,2.3,0.0005
 | `cell_type_bar.png` | 细胞类型匹配柱状图 |
 | `up_genes.csv` | 上调基因列表 |
 | `down_genes.csv` | 下调基因列表 |
+| `run_manifest.json` | 参数、Trace、质量等级和文件清单 |
 
 ### Agent Manifest
 
-每次运行记录保存在 `results/<run_id>/run_manifest.json`，包含：
+每次运行记录保存在对应输出目录的 `run_manifest.json`，包含：
 
 - 运行参数与时间戳
 - Tool Trace（每个步骤的决策、耗时、状态）
@@ -273,10 +278,22 @@ AIF1,2.3,0.0005
 
 | 组件 | 选择 |
 |:----|:-----|
-| 语言 | Python 3.8+ |
+| 语言 | Python 3.10+ |
 | 数据处理 | pandas, numpy |
 | 可视化 | matplotlib, seaborn |
 | Web 界面 | streamlit |
 | 统计检验 | 纯 Python 实现（math.lgamma） |
 | 在线富集 | requests (Enrichr API) |
 | 测试 | unittest |
+
+---
+
+## 工程验证
+
+```bash
+python -m unittest discover -s tests -v
+python app.py data/example_neuro_deg.csv --output-dir /tmp/neurodeg-demo
+python app.py data/missing_p_adj.csv --no-vis
+```
+
+错误输入会返回非零退出码，便于 GitHub Actions 或其他自动化系统正确识别失败。

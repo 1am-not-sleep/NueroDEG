@@ -27,5 +27,16 @@ class TestLoader(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             load_deg("/nonexistent/file.csv")
 
+    def test_rejects_out_of_range_pvalues(self):
+        bad = tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False)
+        try:
+            bad.write("gene,log2FC,p_adj\nSNAP25,1.2,1.5\n")
+            bad.close()
+            with self.assertRaisesRegex(ValueError, "0 到 1"):
+                load_deg(bad.name)
+        finally:
+            if os.path.exists(bad.name):
+                os.unlink(bad.name)
+
 if __name__ == "__main__":
     unittest.main()

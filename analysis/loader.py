@@ -53,18 +53,27 @@ def load_deg(filepath):
         raise ValueError("无法检测到显著性列(padj或pvalue)")
 
     result = pd.DataFrame()
-    result["gene"] = df_clean[gene_col].astype(str).str.strip()
+    result["gene"] = df_clean[gene_col].astype("string").str.strip()
     result["log2fc"] = pd.to_numeric(df_clean[lfc_col], errors="coerce")
     result["padj"] = pd.to_numeric(df_clean[padj_col], errors="coerce") if padj_col else pd.to_numeric(df_clean[pval_col], errors="coerce")
     result["pval"] = pd.to_numeric(df_clean[pval_col], errors="coerce") if pval_col else result["padj"]
 
+    result.loc[result["gene"].isin(["", "nan", "None"]), "gene"] = pd.NA
     before = len(result)
-    result = result.dropna(subset=["gene", "log2fc"])
+    result = result.dropna(subset=["gene", "log2fc", "padj"])
     if len(result) == 0:
         raise ValueError("所有基因数据均缺失，请检查文件格式")
     dropped = before - len(result)
     if dropped > 0:
         print(f"[loader] 删除了 {dropped} 行缺失数据")
+
+    invalid_p = (result["padj"] < 0) | (result["padj"] > 1)
+    if invalid_p.any():
+        raise ValueError("显著性列必须位于 0 到 1 之间")
+
+    duplicates = result["gene"].str.upper().duplicated().sum()
+    if duplicates:
+        print(f"[loader] 警告: 检测到 {duplicates} 个重复基因条目")
 
     print(f"[loader] 成功加载 {len(result)} 个基因")
     return result

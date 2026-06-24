@@ -1,190 +1,84 @@
 #!/usr/bin/env python3
-"""NeuroDEG -- 神经细胞基因表达差异分析 Agent
-CLI 主入口（增强版，整合 agent_core）
+"""NeuroDEG command-line entrypoint."""
 
-用法:
-    python app.py data/example_neuro_deg.csv
-    python app.py data/example_neuro_deg.csv --fc-cutoff 1.5 --p-cutoff 0.01
-    python app.py data/example_neuro_deg.csv --use-api --output-dir ./my_results
-"""
+from __future__ import annotations
 
-import sys
-import os
 import argparse
+import subprocess
+import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from analysis.loader import load_deg, summarize_deg
-from analysis.filter import filter_degs, get_volcano_data
-from analysis.neural_matcher import load_knowledge_base, match_neural_types, match_pathways
-from analysis.enrichment import run_enrichment
-from analysis.interpreter import render_report
-from agent_core.state import AgentState
-from agent_core.trace import TraceRecorder
-from agent_core.guardrails import check_input_guardrails, check_output_guardrails
-from agent_core.quality import QualityEvaluator
-from agent_core.memory import save_run
+from agent_core.orchestrator import AnalysisRunError, run_analysis
 
 
-def main():
-    parser = argparse.ArgumentParser(description="NeuroDEG -- 神经DEG分析Agent")
-    parser.add_argument("input_file", nargs="?", default="", help="DEG文件 (CSV/TSV)")
-    parser.add_argument("--fc-cutoff", type=float, default=1.0, help="|log2FC| 阈值")
-    parser.add_argument("--p-cutoff", type=float, default=0.05, help="校正p值阈值")
-    parser.add_argument("--output-dir", default=None, help="输出目录")
-    parser.add_argument("--use-api", action="store_true", help="启用Enrichr API")
-    parser.add_argument("--no-vis", action="store_true", help="跳过可视化")
-    parser.add_argument("--quiet", action="store_true", help="静默模式")
-    parser.add_argument("--streamlit", action="store_true", help="启动网页界面")
-    args = parser.parse_args()
+ROOT = Path(__file__).resolve().parent
+
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="NeuroDEG neural DEG analysis agent")
+    parser.add_argument("input_file", nargs="?", default="", help="DEG file (CSV/TSV)")
+    parser.add_argument("--fc-cutoff", type=float, default=1.0, help="Absolute log2FC cutoff")
+    parser.add_argument("--p-cutoff", type=float, default=0.05, help="Adjusted p-value cutoff")
+    parser.add_argument("--output-dir", default=None, help="Output directory")
+    parser.add_argument("--use-api", action="store_true", help="Enable optional Enrichr enrichment")
+    parser.add_argument("--no-vis", action="store_true", help="Skip plot generation")
+    parser.add_argument("--quiet", action="store_true", help="Reduce terminal output")
+    parser.add_argument("--streamlit", action="store_true", help="Launch the Streamlit interface")
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
 
     if args.streamlit or not args.input_file:
-        sp = os.path.join(os.path.dirname(__file__), "streamlit_app.py")
-        os.system(f"streamlit run {sp}")
-        return
-
-    state = AgentState(args.input_file, {
-        "fc_cutoff": args.fc_cutoff,
-        "p_cutoff": args.p_cutoff,
-        "use_api": args.use_api,
-        "no_vis": args.no_vis
-    })
-    trace = TraceRecorder()
-
-    print()
-    print("=" * 55)
-    print("  NeuroDEG -- 神经细胞基因表达差异分析")
-    print("=" * 55)
-    print()
-
-    # Step 1: 输入检查
-    print("[1/7] 输入检查...")
-    step1 = trace.start("Input Checker", {"file": args.input_file})
-    gw_in = check_input_guardrails(args.input_file)
-    if any(w["level"] == "error" for w in gw_in):
-        print(f"  错误: {gw_in}")
-        state.errors.append(str(gw_in))
-        trace.finish(step1, "failed")
-        return
-    try:
-        state.input_df = load_deg(args.input_file)
-        summarize_deg(state.input_df, args.fc_cutoff, args.p_cutoff)
-        trace.finish(step1, "success", {"genes": len(state.input_df)})
-    except Exception as e:
-        state.errors.append(str(e))
-        trace.finish(step1, "failed", {"error": str(e)})
-        print(f"  错误: {e}")
-        return
-
-    # Step 2: DEG筛选
-    print()
-    print("[2/7] 筛选差异表达基因...")
-    step2 = trace.start("DEG Filter", {"fc_cutoff": args.fc_cutoff, "p_cutoff": args.p_cutoff})
-    state.filter_result = filter_degs(state.input_df, args.fc_cutoff, args.p_cutoff)
-    trace.finish(step2, "success", state.filter_result["summary"])
-
-    if state.filter_result["summary"]["significant"] == 0:
-        msg = "未检测到显著差异基因，请尝试放宽阈值"
-        print(f"  [警告] {msg}")
-        state.warnings.append(msg)
-
-    # Step 3: 可视化
-    if not args.no_vis:
-        print()
-        print("[3/7] 生成可视化...")
-        step3 = trace.start("Visualization", {})
-        try:
-            from utils.visualizer import plot_volcano, plot_cell_type_bar
-            vdata = get_volcano_data(state.input_df, args.fc_cutoff, args.p_cutoff)
-            vis_dir = args.output_dir or os.path.join(os.path.dirname(__file__), "output")
-            os.makedirs(vis_dir, exist_ok=True)
-            plot_volcano(vdata, os.path.join(vis_dir, "volcano.png"), fc_cutoff=args.fc_cutoff, p_cutoff=args.p_cutoff)
-            if state.match_result:
-                plot_cell_type_bar(state.match_result, os.path.join(vis_dir, "cell_type_bar.png"))
-            trace.finish(step3, "success")
-        except Exception as e:
-            print(f"  [可视化] 跳过: {e}")
-            trace.finish(step3, "skipped", {"error": str(e)})
-
-    # Step 4: 条件决策
-    sig_count = state.filter_result["summary"]["significant"]
-    if sig_count >= 10:
-        print()
-        print("[4/7] 匹配神经细胞类型...")
-        step4 = trace.start("Neural Matcher", {}, decision=f"显著基因{sig_count}>=10")
-        kb, g2c = load_knowledge_base()
-        state.match_result = match_neural_types(
-            state.filter_result["up"], state.filter_result["down"], kb, g2c
+        return subprocess.call(
+            [sys.executable, "-m", "streamlit", "run", str(ROOT / "streamlit_app.py")]
         )
-        trace.finish(step4, "success", {"matched_types": state.match_result["total_matched_types"]})
-    else:
-        msg = f"显著基因({sig_count})不足10个，跳过"
-        print()
-        print(f"[4/7] 跳过: {msg}")
-        state.warnings.append(msg)
-        step4 = trace.start("Neural Matcher", {}, decision=msg)
-        trace.finish(step4, "skipped")
-        state.match_result = {"results": [], "total_matched_types": 0}
 
-    # Step 5: 通路富集
-    if sig_count >= 10:
-        print()
-        print("[5/7] 通路富集分析...")
-        step5 = trace.start("Enrichment", {}, decision=f"显著基因{sig_count}>=10")
-        all_genes = set(state.filter_result["all"]["gene"].tolist())
-        state.enrichment_result = run_enrichment(list(all_genes), use_api=args.use_api)
-        trace.finish(step5, "success", {"local_pathways": len(state.enrichment_result["local"])})
-    else:
-        step5 = trace.start("Enrichment", {}, decision="跳过: 显著基因不足")
-        trace.finish(step5, "skipped")
-        state.enrichment_result = {"local": [], "api": None}
-
-    # Step 6: 报告
-    print()
-    print("[6/7] 生成分析报告...")
-    step6 = trace.start("Report Generator", {})
-    state.report = render_report(
-        state.filter_result, state.match_result, state.enrichment_result,
-        input_file=args.input_file, output_path=None
-    )
-    trace.finish(step6, "success")
-
-    # Guardrails
-    gw_out = check_output_guardrails(state.report)
-    if gw_out:
-        print()
-        print("[Guardrails] 输出检查发现潜在问题:")
-        for w in gw_out:
-            print(f"  ! {w['message']}")
-        state.warnings.extend([w["message"] for w in gw_out])
-
-    # Step 7: 质量评估
-    print()
-    print("[7/7] 质量评估...")
-    qe = QualityEvaluator()
-    quality = qe.evaluate(state.filter_result, state.match_result, gw_in + gw_out)
-    print(f"  质量等级: {quality['grade']} ({'; '.join(quality['reasons'])})")
-
-    # 保存
-    save_run(state, trace, quality, args.output_dir)
-
-    # 输出 Trace
     if not args.quiet:
         print()
-        print("=" * 55)
-        print("  Agent Trace")
-        print("=" * 55)
-        print(trace.format_table())
+        print("=" * 58)
+        print("  NeuroDEG - neural differential-expression analysis agent")
+        print("=" * 58)
+
+    try:
+        result = run_analysis(
+            input_file=args.input_file,
+            fc_cutoff=args.fc_cutoff,
+            p_cutoff=args.p_cutoff,
+            output_dir=args.output_dir,
+            use_api=args.use_api,
+            generate_visuals=not args.no_vis,
+            quiet=args.quiet,
+        )
+    except AnalysisRunError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    summary = result.state.filter_result["summary"]
+    print()
+    print(f"Run ID: {result.state.run_id}")
+    print(f"Total genes: {summary['total_genes']}")
+    print(f"Significant genes: {summary['significant']}")
+    print(f"Up-regulated genes: {summary['up']}")
+    print(f"Down-regulated genes: {summary['down']}")
+    print(f"Matched cell types: {result.state.match_result['total_matched_types']}")
+    print(f"GO pathways: {len(result.state.enrichment_result.get('go', []))}")
+    print(f"Quality grade: {result.quality['grade']}")
+    print(f"Output directory: {result.output_dir}")
+
+    if result.state.warnings:
+        print("Warnings:")
+        for warning in result.state.warnings:
+            print(f"- {warning}")
+
+    if not args.quiet:
         print()
-        print("=" * 55)
-        print(f"  质量: {quality['grade']}")
-        if state.warnings:
-            print("  警告:")
-            for w in state.warnings:
-                print(f"    ! {w}"[:70])
-        print("=" * 55)
-        print()
+        print("Agent Trace")
+        print(result.trace.format_table())
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

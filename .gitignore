@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+.cache/
+.streamlit/
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+results/*
+!results/.gitkeep

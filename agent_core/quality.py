@@ -11,19 +11,19 @@ class QualityEvaluator:
         errors = [w for w in guardrail_warnings if w.get("level") == "error"]
         warnings = [w for w in guardrail_warnings if w.get("level") == "warning"]
 
-        if errors or sig < 10:
+        if errors or sig <= 5:
             self.grade = "blocked"
             self.reasons = []
             if errors: self.reasons.append("存在严重错误")
-            if sig < 10: self.reasons.append(f"显著基因过少({sig})")
-        elif sig < 50 or matched < 3 or warnings:
+            if sig <= 5: self.reasons.append(f"显著基因过少({sig})")
+        elif sig < 10 or matched < 1 or warnings:
             self.grade = "review"
             self.reasons = []
-            if sig < 50: self.reasons.append(f"显著基因较少({sig})")
-            if matched < 3: self.reasons.append(f"匹配细胞类型不足({matched})")
+            if sig < 10: self.reasons.append(f"显著基因较少({sig})")
+            if matched < 1: self.reasons.append("未匹配到神经细胞类型")
             if warnings: self.reasons.append(f"存在{len(warnings)}条guardrail警告")
         else:
             self.grade = "ready"
-            self.reasons = ["分析完成，质量达标"]
+            self.reasons = ["输入、细胞类型匹配与安全检查均达到展示标准"]
 
         return {"grade": self.grade, "reasons": self.reasons}
