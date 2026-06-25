@@ -56,6 +56,7 @@ def run_analysis(
     quiet=False,
     report_language="zh",
 ):
+    input_file = str(input_file)
     run_id = make_run_id()
     if output_dir is None:
         output_dir = os.path.join(os.path.dirname(__file__), "..", "results", run_id)

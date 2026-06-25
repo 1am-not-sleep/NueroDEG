@@ -23,3 +23,5 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Run CLI smoke test
         run: python app.py data/example_neuro_deg.csv --no-vis --output-dir /tmp/neurodeg-ci
+      - name: Run deployment smoke test
+        run: python scripts/deployment_smoke_test.py

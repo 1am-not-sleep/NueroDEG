@@ -300,6 +300,23 @@ python -m unittest discover -s tests -v
 python app.py data/example_neuro_deg.csv --output-dir /tmp/neurodeg-demo
 python app.py data/example_neuro_deg.csv --language en --output-dir /tmp/neurodeg-en
 python app.py data/missing_p_adj.csv --no-vis
+python scripts/deployment_smoke_test.py
 ```
 
 错误输入会返回非零退出码，便于 GitHub Actions 或其他自动化系统正确识别失败。
+
+---
+
+## 公网部署
+
+GitHub Pages 不能执行 Python/Streamlit 后端。功能网站使用 GitHub 托管代码，
+并通过 Streamlit Community Cloud 部署：
+
+```text
+Repository: 1am-not-sleep/NueroDEG
+Branch: codex/test-new-polish
+Entry point: streamlit_app.py
+Python: 3.12
+```
+
+详细步骤见 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)。

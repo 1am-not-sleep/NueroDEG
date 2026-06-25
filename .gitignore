@@ -4,7 +4,8 @@ __pycache__/
 .venv/
 venv/
 .cache/
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 input/*
 !input/.gitkeep
 output/*
