@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import io
 import os
+import shutil
 import tempfile
 import zipfile
 from dataclasses import asdict
@@ -14,7 +15,7 @@ import streamlit as st
 
 from analysis.loader import detect_column
 from analysis.interpreter import render_report
-from agent_core.conversation import handle_message
+from agent_core.llm_agent import DEFAULT_MODEL, handle_agent_message
 from agent_core.i18n import translate
 from agent_core.memory import save_run
 from agent_core.orchestrator import AnalysisRunError, run_analysis
@@ -22,6 +23,7 @@ from agent_core.orchestrator import AnalysisRunError, run_analysis
 
 ROOT = Path(__file__).resolve().parent
 EXAMPLE_PATH = ROOT / "data" / "example_neuro_deg.csv"
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 
 st.set_page_config(page_title="NeuroDEG", layout="wide")
 
@@ -70,25 +72,68 @@ st.markdown(
 
 
 def reset_analysis():
+    for path in st.session_state.get("managed_temp_paths", []):
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        elif os.path.isfile(path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
     for key in [
         "analysis_run",
         "active_followup",
         "analysis_source",
         "agent_messages",
+        "managed_temp_paths",
+        "uploaded_copy",
     ]:
         st.session_state.pop(key, None)
 
 
 def create_uploaded_copy(uploaded_file):
+    payload = uploaded_file.getbuffer()
+    if len(payload) > MAX_UPLOAD_BYTES:
+        raise ValueError("Uploaded files must be 20 MB or smaller.")
+    existing = st.session_state.get("uploaded_copy")
+    if existing and existing.get("name") == uploaded_file.name and os.path.exists(existing["path"]):
+        return existing["path"]
     suffix = Path(uploaded_file.name).suffix or ".csv"
     handle = tempfile.NamedTemporaryFile(
         prefix="neurodeg_input_",
         suffix=suffix,
         delete=False,
     )
-    handle.write(uploaded_file.getbuffer())
+    handle.write(payload)
     handle.close()
+    st.session_state.uploaded_copy = {"name": uploaded_file.name, "path": handle.name}
+    st.session_state.setdefault("managed_temp_paths", []).append(handle.name)
     return handle.name
+
+
+def register_temp_path(path):
+    paths = st.session_state.setdefault("managed_temp_paths", [])
+    if path not in paths:
+        paths.append(path)
+
+
+def configured_api_key():
+    key = os.getenv("OPENAI_API_KEY", "")
+    if key:
+        return key
+    try:
+        return st.secrets.get("OPENAI_API_KEY", "")
+    except Exception:
+        return ""
+
+
+def sources_for_actions(actions):
+    sources = {"Current DEG run", "NeuroDEG local knowledge base"}
+    if any(action.get("tool") == "Drug-Target Matcher" for action in actions):
+        sources.add("core/drug_targets.json")
+    if any(action.get("tool") == "Pathway Interpreter" for action in actions):
+        sources.add("GO offline annotation cache")
+    return sorted(sources)
 
 
 def read_preview(uploaded_file):
@@ -223,13 +268,19 @@ def render_agent_messages(has_run=False):
                             f"{'观察' if language == 'zh' else 'Observation'}: "
                             f"{action['observation']}"
                         )
+            if message.get("sources"):
+                st.caption(
+                    ("来源: " if language == "zh" else "Sources: ")
+                    + " · ".join(message["sources"])
+                )
 
 
 def process_agent_prompt(prompt, current_run, agent_input_file):
     st.session_state.setdefault("agent_messages", [])
     st.session_state.agent_messages.append({"role": "user", "content": prompt})
-    reply = handle_message(
-        prompt,
+    reply = handle_agent_message(
+        prompt=prompt,
+        api_key=configured_api_key(),
         current_run=current_run,
         input_file=agent_input_file,
         language=language,
@@ -242,6 +293,7 @@ def process_agent_prompt(prompt, current_run, agent_input_file):
             "role": "assistant",
             "content": reply.content,
             "actions": [asdict(action) for action in reply.actions],
+            "sources": sources_for_actions([asdict(action) for action in reply.actions]),
         }
     )
     if reply.updated_run is not None:
@@ -254,6 +306,7 @@ def process_agent_prompt(prompt, current_run, agent_input_file):
             "fc_cutoff": reply.updated_run.state.params["fc_cutoff"],
             "p_cutoff": reply.updated_run.state.params["p_cutoff"],
         }
+        register_temp_path(reply.updated_run.output_dir)
     st.rerun()
 
 
@@ -303,6 +356,14 @@ with st.sidebar:
         key="p_cutoff_widget",
     )
     use_api = st.toggle(t("try_enrichr"), value=False)
+    api_key = configured_api_key()
+    st.caption(
+        (
+            f"Agent: OpenAI tool-calling ({DEFAULT_MODEL})"
+            if api_key
+            else "Agent: deterministic local tools"
+        )
+    )
 
     upload_unavailable = data_option == "upload" and (
         uploaded_file is None or selected_preview_error is not None
@@ -388,6 +449,7 @@ if run_button:
             else uploaded_file.name
         )
         web_output_dir = tempfile.mkdtemp(prefix="neurodeg_web_run_")
+        register_temp_path(web_output_dir)
 
         try:
             with st.status(t("running"), expanded=True) as status:

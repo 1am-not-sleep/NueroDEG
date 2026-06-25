@@ -44,6 +44,16 @@ No secrets are required for offline analysis. Enrichr is optional and may be
 unavailable in restricted cloud environments; local GO and curated pathway
 analysis remain functional.
 
+To enable OpenAI tool planning, add the following Streamlit app secret:
+
+```toml
+OPENAI_API_KEY = "..."
+OPENAI_MODEL = "gpt-5-mini"
+```
+
+Do not commit `.streamlit/secrets.toml`. Without these secrets, or when the API
+is unavailable, the application automatically uses deterministic local routing.
+
 ## Updating the Public Site
 
 After deployment, pushes to the configured GitHub branch trigger an app

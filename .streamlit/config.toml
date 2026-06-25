@@ -3,7 +3,7 @@ gatherUsageStats = false
 
 [server]
 headless = true
-maxUploadSize = 50
+maxUploadSize = 20
 enableXsrfProtection = true
 
 [theme]

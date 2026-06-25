@@ -6,17 +6,20 @@
 - [x] 可视化 (火山图 + 柱状图)
 - [x] CLI入口
 
-## 二期 (进行中)
-- [ ] Agent状态管理 (agent_core/state.py)
-- [ ] Tool Trace记录 (agent_core/trace.py)
-- [ ] Guardrails安全机制 (agent_core/guardrails.py)
-- [ ] 质量评估 (agent_core/quality.py)
-- [ ] Run Memory (agent_core/memory.py)
-- [ ] Streamlit网页界面 (streamlit_app.py)
+## 二期 (已完成)
+- [x] Agent状态管理 (agent_core/state.py)
+- [x] Tool Trace记录 (agent_core/trace.py)
+- [x] Guardrails安全机制 (agent_core/guardrails.py)
+- [x] 质量评估 (agent_core/quality.py)
+- [x] Run Memory (agent_core/memory.py)
+- [x] Streamlit网页界面 (streamlit_app.py)
+- [x] 中英界面、输入/产出预览和 Cell type 标准标签
 
-## 三期 (规划)
-- [ ] Ask Agent追问接口
-- [ ] 在线Enrichr API完善
+## 三期 (当前版本)
+- [x] 对话式 Ask Agent 和自然语言阈值重跑
+- [x] 可选 OpenAI tool calling + 离线自动回退
+- [x] Streamlit Community Cloud 部署配置和冒烟测试
+- [ ] 在线Enrichr API稳定性与限流完善
 - [ ] 单细胞参考数据集成
 - [ ] PubMed文献检索集成
 - [ ] 支持更多DEG输入格式

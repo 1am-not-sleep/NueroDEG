@@ -16,7 +16,8 @@ NeuroDEG 是一个基于规则引擎的 Agent 系统，用户上传差异表达�
 - 结构化 Markdown 报告生成
 - Tool Trace 追踪 + Guardrails 安全机制 + 质量评估
 - Streamlit 分析工作台与结果 ZIP 下载
-- 结构化追问：通路解读、药物靶点关联、基因/细胞类型查询
+- 对话式 Agent：自然语言启动/重跑分析、通路解读、药物靶点关联、基因/细胞类型查询
+- 可选 OpenAI Responses API tool calling；未配置或调用失败时自动回退到离线规则工具
 - 中文 / English 界面与报告动态切换
 - 上传前数据预览、列名识别和分析产出文件预览
 - Cell type 双语标准名与常用缩写（如 Astro、MG、Oligo、OPC）
@@ -152,7 +153,9 @@ NeuroDEG/
 │   ├── guardrails.py              ← 医学声明安全检查
 │   ├── quality.py                 ← 质量评估 (ready/review/blocked)
 │   ├── memory.py                  ← Run memory + manifest
-│   └── chat.py                    ← Ask Agent 追问
+│   ├── conversation.py            ← 离线自然语言工具路由
+│   ├── llm_agent.py               ← 可选 OpenAI tool-calling 规划层
+│   └── chat.py                    ← 本地知识库查询
 │
 ├── data/                          ← 数据文件
 │   ├── example_neuro_deg.csv      ← 示例 DEG 数据
@@ -205,6 +208,17 @@ python app.py data/example_neuro_deg.csv --output-dir results/my_analysis
 streamlit run streamlit_app.py
 ```
 
+可选启用 LLM 规划层：
+
+```bash
+export OPENAI_API_KEY="your-key"
+export OPENAI_MODEL="gpt-5-mini"
+streamlit run streamlit_app.py
+```
+
+API Key 只用于选择本地工具和基于工具结果生成简短回答。原始上传文件不会作为
+模型输入；未配置 Key 时网页使用完全离线、可复现的规则路由。
+
 浏览器打开后：
 1. 选择 `中文 / English`
 2. 在侧边栏选择示例数据或上传自定义 DEG 文件
@@ -213,6 +227,8 @@ streamlit run streamlit_app.py
 5. 查看概览、可视化、双语细胞类型、通路、Trace、报告和 Ask Agent
 6. 在 Artifacts 中预览 CSV、图片、报告与 manifest
 7. 下载 Markdown 报告或完整 ZIP 结果包
+
+网页上传限制为 20 MB。上传副本和分析结果保存在会话临时目录，并在重置会话时清理。
 
 ### 运行测试
 
