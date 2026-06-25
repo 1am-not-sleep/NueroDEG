@@ -6,6 +6,7 @@ import io
 import os
 import tempfile
 import zipfile
+from dataclasses import asdict
 from pathlib import Path
 
 import pandas as pd
@@ -13,11 +14,10 @@ import streamlit as st
 
 from analysis.loader import detect_column
 from analysis.interpreter import render_report
-from agent_core.chat import load_kb, query_cell_type, query_gene
+from agent_core.conversation import handle_message
 from agent_core.i18n import translate
 from agent_core.memory import save_run
 from agent_core.orchestrator import AnalysisRunError, run_analysis
-from agent_core.qa_buttons import analysis_summary, drug_association, pathway_insights
 
 
 ROOT = Path(__file__).resolve().parent
@@ -33,6 +33,11 @@ language = st.sidebar.segmented_control(
     key="ui_language",
 )
 t = lambda key: translate(language, key)
+
+if "pending_agent_thresholds" in st.session_state:
+    pending_thresholds = st.session_state.pop("pending_agent_thresholds")
+    st.session_state["fc_cutoff_widget"] = pending_thresholds["fc_cutoff"]
+    st.session_state["p_cutoff_widget"] = pending_thresholds["p_cutoff"]
 
 subtitle = (
     "验证神经相关 DEG 表，识别细胞类型信号，运行离线 GO 富集，"
@@ -69,6 +74,7 @@ def reset_analysis():
         "analysis_run",
         "active_followup",
         "analysis_source",
+        "agent_messages",
     ]:
         st.session_state.pop(key, None)
 
@@ -158,6 +164,99 @@ def preview_artifact(label, path):
         )
 
 
+def render_agent_messages(has_run=False):
+    messages = st.session_state.get("agent_messages", [])
+    if not messages:
+        with st.chat_message("assistant"):
+            if language == "zh":
+                st.markdown(
+                    "我是 NeuroDEG Agent。我会先判断你的目标，再选择分析、基因查询、"
+                    "细胞类型解释、通路解释、药物靶点、质量检查或 Trace 工具。"
+                )
+                st.caption(
+                    "可直接输入：分析当前数据；解释 GFAP；解释 MG；总结 GO 通路；"
+                    "展示分析步骤。"
+                )
+            else:
+                st.markdown(
+                    "I am the NeuroDEG Agent. I plan each request and select analysis, "
+                    "gene, cell-type, pathway, drug-target, quality, or trace tools."
+                )
+                st.caption(
+                    "Try: Analyze the current data; explain GFAP; explain MG; "
+                    "summarize GO pathways; show the analysis steps."
+                )
+            if has_run:
+                st.success(
+                    "已连接当前分析结果，可以继续追问或要求重新分析。"
+                    if language == "zh"
+                    else "Connected to the current run. You can ask follow-ups or request reanalysis."
+                )
+
+    for message in messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+            actions = message.get("actions", [])
+            if actions:
+                label = (
+                    f"Agent 操作 ({len(actions)})"
+                    if language == "zh"
+                    else f"Agent actions ({len(actions)})"
+                )
+                with st.expander(label, expanded=False):
+                    st.caption(
+                        "计划 → 工具 → 观察"
+                        if language == "zh"
+                        else "Plan → Tool → Observation"
+                    )
+                    for index, action in enumerate(actions, start=1):
+                        status = action.get("status", "success")
+                        symbol = {
+                            "success": "✓",
+                            "failed": "✕",
+                            "blocked": "!",
+                            "review": "?",
+                        }.get(status, "•")
+                        st.markdown(
+                            f"**{index}. {symbol} {action['tool']}**  \n"
+                            f"{'原因' if language == 'zh' else 'Reason'}: {action['reason']}  \n"
+                            f"{'观察' if language == 'zh' else 'Observation'}: "
+                            f"{action['observation']}"
+                        )
+
+
+def process_agent_prompt(prompt, current_run, agent_input_file):
+    st.session_state.setdefault("agent_messages", [])
+    st.session_state.agent_messages.append({"role": "user", "content": prompt})
+    reply = handle_message(
+        prompt,
+        current_run=current_run,
+        input_file=agent_input_file,
+        language=language,
+        fc_cutoff=fc_cutoff,
+        p_cutoff=p_cutoff,
+        use_api=use_api,
+    )
+    st.session_state.agent_messages.append(
+        {
+            "role": "assistant",
+            "content": reply.content,
+            "actions": [asdict(action) for action in reply.actions],
+        }
+    )
+    if reply.updated_run is not None:
+        st.session_state.analysis_run = reply.updated_run
+        st.session_state.analysis_source = os.path.basename(
+            reply.updated_run.state.input_file
+        )
+        st.session_state.active_followup = None
+        st.session_state.pending_agent_thresholds = {
+            "fc_cutoff": reply.updated_run.state.params["fc_cutoff"],
+            "p_cutoff": reply.updated_run.state.params["p_cutoff"],
+        }
+    st.rerun()
+
+
 selected_preview = None
 selected_preview_error = None
 
@@ -192,6 +291,7 @@ with st.sidebar:
         max_value=5.0,
         value=1.0,
         step=0.1,
+        key="fc_cutoff_widget",
     )
     p_cutoff = st.number_input(
         t("p_cutoff"),
@@ -200,6 +300,7 @@ with st.sidebar:
         value=0.05,
         step=0.001,
         format="%.3f",
+        key="p_cutoff_widget",
     )
     use_api = st.toggle(t("try_enrichr"), value=False)
 
@@ -356,6 +457,31 @@ if run is None:
             - {"运行 manifest 与 Agent 轨迹" if language == "zh" else "run manifest and agent trace"}
             """
         )
+
+    st.divider()
+    st.markdown(
+        "#### 对话式 Agent"
+        if language == "zh"
+        else "#### Conversational Agent"
+    )
+    st.caption(
+        "直接说“分析当前数据”，或指定阈值：“用 log2FC 1.5、padj 0.01 分析”。"
+        if language == "zh"
+        else "Try: “Analyze the current data” or “Analyze with log2FC 1.5 and padj 0.01.”"
+    )
+    render_agent_messages(has_run=False)
+    initial_prompt = st.chat_input(
+        "告诉 Agent 你的分析目标..."
+        if language == "zh"
+        else "Tell the agent what you want to analyze..."
+    )
+    if initial_prompt:
+        agent_input_file = None
+        if data_option == "example":
+            agent_input_file = str(EXAMPLE_PATH)
+        elif uploaded_file is not None:
+            agent_input_file = create_uploaded_copy(uploaded_file)
+        process_agent_prompt(initial_prompt, None, agent_input_file)
     st.stop()
 
 
@@ -407,6 +533,7 @@ if state.warnings:
 
 tabs = st.tabs(
     [
+        t("ask_agent"),
         t("overview"),
         t("visualizations"),
         t("cell_types"),
@@ -414,11 +541,10 @@ tabs = st.tabs(
         t("agent_trace"),
         t("report"),
         t("artifacts"),
-        t("ask_agent"),
     ]
 )
 
-with tabs[0]:
+with tabs[1]:
     left, right = st.columns([1.5, 1])
     with left:
         st.markdown(f"#### {t('deg_summary')}")
@@ -467,7 +593,7 @@ with tabs[0]:
             width="stretch",
         )
 
-with tabs[1]:
+with tabs[2]:
     plot_columns = st.columns(2)
     with plot_columns[0]:
         st.markdown(f"#### {t('volcano_plot')}")
@@ -488,7 +614,7 @@ with tabs[1]:
                 else "No cell-type plot is available for this run."
             )
 
-with tabs[2]:
+with tabs[3]:
     if not match_result["results"]:
         st.info(t("no_cell_type"))
     else:
@@ -525,7 +651,7 @@ with tabs[2]:
                 )
                 st.write(item["interpretation"])
 
-with tabs[3]:
+with tabs[4]:
     go_results = enrichment.get("go", [])
     local_results = enrichment.get("local", [])
     enrichment_tabs = st.tabs(
@@ -588,7 +714,7 @@ with tabs[3]:
                 else "Enrichr was not requested for this run."
             )
 
-with tabs[4]:
+with tabs[5]:
     trace_table = pd.DataFrame(run.trace.to_list())
     st.dataframe(trace_table, width="stretch", hide_index=True)
     st.markdown(f"#### {t('guardrails')}")
@@ -601,7 +727,7 @@ with tabs[4]:
     else:
         st.success(t("no_guardrail"))
 
-with tabs[5]:
+with tabs[6]:
     st.download_button(
         t("download_report"),
         state.report,
@@ -610,7 +736,7 @@ with tabs[5]:
     )
     st.markdown(state.report)
 
-with tabs[6]:
+with tabs[7]:
     artifact_rows = []
     for name, path in state.artifacts.items():
         if path and os.path.exists(path):
@@ -640,58 +766,52 @@ with tabs[6]:
     if selected_artifact:
         preview_artifact(selected_artifact, artifact_options[selected_artifact])
 
-with tabs[7]:
+with tabs[0]:
     st.markdown(
-        "使用结构化追问解读通路、查看药物靶点关联，或查询本地 marker 知识库。"
+        "使用自然语言要求 Agent 调用分析工具、调整阈值、解释结果或说明局限。"
         if language == "zh"
         else (
-            "Use structured follow-ups to interpret pathways, inspect drug-target associations, "
-            "or query the local marker knowledge base."
+            "Ask the agent to call analysis tools, change thresholds, explain results, "
+            "or describe limitations."
         )
     )
-    followup_columns = st.columns(3)
-    if followup_columns[0].button(t("interpret_pathways"), width="stretch"):
-        st.session_state.active_followup = "pathways"
-    if followup_columns[1].button(t("drug_targets"), width="stretch"):
-        st.session_state.active_followup = "drugs"
-    if followup_columns[2].button(t("concise_summary"), width="stretch"):
-        st.session_state.active_followup = "summary"
+    quick_prompts = (
+        [
+            "总结本次结果",
+            "解释 MG 和 Oligo 的变化",
+            "最显著的 GO 通路是什么？",
+            "这些结论有哪些局限？",
+        ]
+        if language == "zh"
+        else [
+            "Summarize this run",
+            "Explain MG and Oligo changes",
+            "What are the top GO pathways?",
+            "What are the limitations?",
+        ]
+    )
+    quick_columns = st.columns(4)
+    for index, quick_prompt in enumerate(quick_prompts):
+        if quick_columns[index].button(
+            quick_prompt,
+            key=f"agent_quick_{language}_{index}",
+            width="stretch",
+        ):
+            process_agent_prompt(
+                quick_prompt,
+                run,
+                run.state.input_file,
+            )
 
-    active = st.session_state.get("active_followup")
-    if active == "pathways":
-        st.markdown(
-            pathway_insights(go_results, match_result, local_results, language=language)
+    render_agent_messages(has_run=True)
+    chat_prompt = st.chat_input(
+        "例如：用 log2FC 1.5、padj 0.01 重新分析"
+        if language == "zh"
+        else "Example: Reanalyze with log2FC 1.5 and padj 0.01"
+    )
+    if chat_prompt:
+        process_agent_prompt(
+            chat_prompt,
+            run,
+            run.state.input_file,
         )
-    elif active == "drugs":
-        st.markdown(drug_association(go_results, local_results, language=language))
-    elif active == "summary":
-        concise = analysis_summary(
-            state.filter_result,
-            match_result,
-            enrichment,
-            quality,
-            input_file=st.session_state.get("analysis_source", ""),
-            fc_cutoff=summary["fc_cutoff"],
-            p_cutoff=summary["p_cutoff"],
-            language=language,
-        )
-        st.code(concise, language="text")
-
-    st.divider()
-    with st.form("knowledge_query"):
-        query = st.text_input(
-            t("knowledge_query"),
-            placeholder=(
-                "例如：GFAP、MBP、星形胶质细胞、Astrocyte、MG"
-                if language == "zh"
-                else "Examples: GFAP, MBP, Astrocyte, Microglia, OPC"
-            ),
-        )
-        submitted = st.form_submit_button(t("search_kb"))
-    if submitted and query:
-        kb = load_kb()
-        direction = "up" if "上调" in query else "down" if "下调" in query else ""
-        answer = query_cell_type(query.strip(), direction, kb)
-        if answer.startswith("知识库中未找到细胞类型"):
-            answer = query_gene(query.strip(), kb)
-        st.markdown(answer)
