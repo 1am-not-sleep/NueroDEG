@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+venv/
+.cache/
+.streamlit/*
+!.streamlit/config.toml
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+results/*
+!results/.gitkeep

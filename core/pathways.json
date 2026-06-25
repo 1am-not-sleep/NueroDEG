@@ -1,0 +1,337 @@
+{
+  "version": "1.0",
+  "description": "神经相关通路本地知识库 - Local neural pathway knowledge base",
+  "pathways": [
+    {
+      "id": "P001",
+      "name": "谷氨酸能突触信号通路",
+      "name_en": "Glutamatergic Synapse",
+      "kegg_id": "hsa04724",
+      "associated_cell_types": [
+        "兴奋性神经元"
+      ],
+      "genes": [
+        "GRIN1",
+        "GRIA1",
+        "GRIK1",
+        "GRM1",
+        "GRM5",
+        "SLC17A7",
+        "SLC17A6",
+        "DLG4",
+        "NLGN1",
+        "NRXN1"
+      ],
+      "biological_process": "谷氨酸介导的兴奋性突触传递，涉及突触前释放、突触后受体激活和信号转导级联",
+      "relevance": "核心神经电活动通路，异常可导致癫痫、兴奋毒性"
+    },
+    {
+      "id": "P002",
+      "name": "GABA能突触信号通路",
+      "name_en": "GABAergic Synapse",
+      "kegg_id": "hsa04727",
+      "associated_cell_types": [
+        "抑制性神经元"
+      ],
+      "genes": [
+        "GAD1",
+        "GAD2",
+        "GABRA1",
+        "GABRA2",
+        "GABRG2",
+        "GABRB2",
+        "SLC32A1",
+        "GARBR1",
+        "GPHN"
+      ],
+      "biological_process": "GABA介导的抑制性突触传递，调节神经网络兴奋性",
+      "relevance": "兴奋-抑制平衡(E/I)的关键通路，异常与癫痫、焦虑相关"
+    },
+    {
+      "id": "P003",
+      "name": "多巴胺能突触信号通路",
+      "name_en": "Dopaminergic Synapse",
+      "kegg_id": "hsa04728",
+      "associated_cell_types": [
+        "多巴胺能神经元",
+        "兴奋性神经元"
+      ],
+      "genes": [
+        "TH",
+        "DDC",
+        "SLC6A3",
+        "DRD1",
+        "DRD2",
+        "DRD3",
+        "COMT",
+        "MAOA",
+        "MAOB"
+      ],
+      "biological_process": "多巴胺合成、释放、再摄取和受体介导的信号传导",
+      "relevance": "运动控制、奖赏机制、认知功能；帕金森病和成瘾的核心通路"
+    },
+    {
+      "id": "P004",
+      "name": "胆碱能突触信号通路",
+      "name_en": "Cholinergic Synapse",
+      "kegg_id": "hsa04725",
+      "associated_cell_types": [
+        "胆碱能神经元"
+      ],
+      "genes": [
+        "CHAT",
+        "ACHE",
+        "SLC5A7",
+        "CHRM1",
+        "CHRM2",
+        "CHRNA4",
+        "CHRNB2",
+        "CHRNA7"
+      ],
+      "biological_process": "乙酰胆碱的合成、释放、降解和受体信号传导",
+      "relevance": "学习记忆核心通路，阿尔茨海默病中显著受损"
+    },
+    {
+      "id": "P005",
+      "name": "5-羟色胺能突触信号通路",
+      "name_en": "Serotonergic Synapse",
+      "kegg_id": "hsa04726",
+      "associated_cell_types": [
+        "血清素能神经元"
+      ],
+      "genes": [
+        "TPH2",
+        "DDC",
+        "SLC6A4",
+        "HTR1A",
+        "HTR2A",
+        "HTR1B",
+        "HTR2C"
+      ],
+      "biological_process": "5-羟色胺的合成、释放、再摄取和受体信号传导",
+      "relevance": "情绪调节关键通路，抑郁症药物靶点通路"
+    },
+    {
+      "id": "P006",
+      "name": "长时程增强(LTP)",
+      "name_en": "Long-term Potentiation",
+      "kegg_id": "hsa04720",
+      "associated_cell_types": [
+        "兴奋性神经元"
+      ],
+      "genes": [
+        "CAMK2A",
+        "GRIN1",
+        "GRIA1",
+        "PRKCA",
+        "PRKCB",
+        "MAPK1",
+        "MAPK3",
+        "CREB1",
+        "EGR1",
+        "FOS"
+      ],
+      "biological_process": "突触可塑性核心机制，NMDA受体依赖性LTP",
+      "relevance": "学习和记忆的分子基础，异常提示认知功能改变"
+    },
+    {
+      "id": "P007",
+      "name": "神经营养因子信号通路",
+      "name_en": "Neurotrophin Signaling",
+      "kegg_id": "hsa04722",
+      "associated_cell_types": [
+        "所有神经细胞"
+      ],
+      "genes": [
+        "NGF",
+        "BDNF",
+        "NTF3",
+        "NTF4",
+        "NTRK1",
+        "NTRK2",
+        "NGFR"
+      ],
+      "biological_process": "神经营养因子介导的神经元存活、分化和突触可塑性",
+      "relevance": "神经细胞存活和可塑性，BDNF与抑郁、认知相关"
+    },
+    {
+      "id": "P008",
+      "name": "神经炎症信号通路",
+      "name_en": "Neuroinflammation Signaling",
+      "kegg_id": "",
+      "associated_cell_types": [
+        "小胶质细胞",
+        "星形胶质细胞"
+      ],
+      "genes": [
+        "TLR4",
+        "MYD88",
+        "NFKB1",
+        "IL1B",
+        "IL6",
+        "TNF",
+        "CCL2",
+        "CXCL8",
+        "IL18",
+        "HMGB1"
+      ],
+      "biological_process": "固有免疫激活、促炎细胞因子表达和释放，神经炎症级联反应",
+      "relevance": "多种神经疾病的共同通路，小胶质细胞活化标志"
+    },
+    {
+      "id": "P009",
+      "name": "反应性胶质增生通路",
+      "name_en": "Reactive Gliosis",
+      "kegg_id": "",
+      "associated_cell_types": [
+        "星形胶质细胞",
+        "小胶质细胞"
+      ],
+      "genes": [
+        "GFAP",
+        "VIM",
+        "STAT3",
+        "LIF",
+        "CNTF",
+        "CASP1",
+        "AQP4",
+        "S100B"
+      ],
+      "biological_process": "星形胶质细胞对损伤的反应性增殖和形态改变",
+      "relevance": "脑损伤和神经退行性疾病的常见反应"
+    },
+    {
+      "id": "P010",
+      "name": "髓鞘形成通路",
+      "name_en": "Myelination",
+      "kegg_id": "",
+      "associated_cell_types": [
+        "少突胶质细胞"
+      ],
+      "genes": [
+        "MBP",
+        "PLP1",
+        "MOG",
+        "MAG",
+        "CNP",
+        "SOX10",
+        "OLIG2",
+        "NKX2-2",
+        "MYRF"
+      ],
+      "biological_process": "少突胶质细胞分化、髓鞘生成和维持",
+      "relevance": "轴突传导速度的决定因素，MS和脑白质病核心通路"
+    },
+    {
+      "id": "P011",
+      "name": "神经发生通路",
+      "name_en": "Neurogenesis",
+      "kegg_id": "",
+      "associated_cell_types": [
+        "神经干细胞/前体细胞"
+      ],
+      "genes": [
+        "SOX2",
+        "NES",
+        "PAX6",
+        "ASCL1",
+        "NEUROD1",
+        "NEUROG2",
+        "DCX",
+        "MKI67",
+        "NOTCH1",
+        "HES1"
+      ],
+      "biological_process": "神经干细胞增殖、分化和新生神经元成熟",
+      "relevance": "成年神经发生与认知功能，受损见于抑郁和衰老"
+    },
+    {
+      "id": "P012",
+      "name": "突触囊泡循环通路",
+      "name_en": "Synaptic Vesicle Cycle",
+      "kegg_id": "hsa04721",
+      "associated_cell_types": [
+        "兴奋性神经元",
+        "抑制性神经元",
+        "所有神经元"
+      ],
+      "genes": [
+        "SYT1",
+        "SNAP25",
+        "STX1A",
+        "VAMP2",
+        "RAB3A",
+        "UNC13A",
+        "CPLX1",
+        "DNM1"
+      ],
+      "biological_process": "神经递质囊泡的锚定、融合、释放和内吞循环",
+      "relevance": "所有神经递质释放的共同机制，全局突触功能指标"
+    },
+    {
+      "id": "P013",
+      "name": "钙信号通路",
+      "name_en": "Calcium Signaling",
+      "kegg_id": "hsa04020",
+      "associated_cell_types": [
+        "所有神经细胞"
+      ],
+      "genes": [
+        "CAMK2A",
+        "CALM1",
+        "CALB1",
+        "NRGN",
+        "CACNA1A",
+        "CACNA1C",
+        "RYR2",
+        "ITPR1"
+      ],
+      "biological_process": "细胞内钙离子浓度调节及钙依赖性信号转导",
+      "relevance": "神经兴奋性、突触可塑性和细胞存活的枢纽通路"
+    },
+    {
+      "id": "P014",
+      "name": "自噬-溶酶体通路(神经退行性病)",
+      "name_en": "Autophagy-Lysosome in Neurodegeneration",
+      "kegg_id": "hsa04140",
+      "associated_cell_types": [
+        "兴奋性神经元",
+        "多巴胺能神经元"
+      ],
+      "genes": [
+        "SQSTM1",
+        "LAMP1",
+        "CTSD",
+        "BECN1",
+        "ATG5",
+        "ATG7",
+        "GBA",
+        "SNCA"
+      ],
+      "biological_process": "细胞内蛋白聚集体和受损细胞器的降解回收",
+      "relevance": "蛋白稳态维持，异常与AD和PD等神经退行性疾病密切相关"
+    },
+    {
+      "id": "P015",
+      "name": "氧化应激与抗氧化通路",
+      "name_en": "Oxidative Stress & Antioxidant",
+      "kegg_id": "",
+      "associated_cell_types": [
+        "所有神经细胞"
+      ],
+      "genes": [
+        "SOD1",
+        "SOD2",
+        "CAT",
+        "GPX1",
+        "PRDX1",
+        "NFE2L2",
+        "HMOX1",
+        "NQO1"
+      ],
+      "biological_process": "活性氧清除和氧化还原平衡维持",
+      "relevance": "神经元对氧化应激高度敏感，失衡可导致神经退行性变"
+    }
+  ],
+  "last_updated": "2026-06-24"
+}
